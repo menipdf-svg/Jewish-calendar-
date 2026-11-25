@@ -53,8 +53,13 @@ object HebrewCal {
 
     fun isSynthetic(e: EventInstance): Boolean = e.calendarId == CALENDAR_ID
 
-    /** האירועים העבריים כאירועי כל-היום החופפים לטווח. */
-    fun instances(range: ClosedRange<Instant>): List<EventInstance> {
+    /** חגים, פרשה, צומות וראש חודש – לתצוגות חודש/שבוע/רשימה (בלי זמני שבת). */
+    fun instances(range: ClosedRange<Instant>): List<EventInstance> = build(range, times = false)
+
+    /** כניסת שבת/יציאתה – מוצגים רק בתצוגת יום, כשנכנסים לתאריך. */
+    fun timeInstances(range: ClosedRange<Instant>): List<EventInstance> = build(range, times = true)
+
+    private fun build(range: ClosedRange<Instant>, times: Boolean): List<EventInstance> {
         if (!enabled) return emptyList()
         val eng = engine
         val first = LocalDate.ofEpochDay(Math.floorDiv(range.start.toEpochMilliseconds(), DAY_MS) - 1)
@@ -66,6 +71,7 @@ object HebrewCal {
             val endMs = startMs + DAY_MS
             if (endMs > range.start.toEpochMilliseconds() && startMs <= range.endInclusive.toEpochMilliseconds()) {
                 eng.events(d).forEachIndexed { i, ev ->
+                    if ((ev.cat == HebCat.SHABBAT) != times) return@forEachIndexed
                     val id = -(d.toEpochDay() * 16 + i) - 1000L
                     out += EventInstance(
                         instanceId = id,

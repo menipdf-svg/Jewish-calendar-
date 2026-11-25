@@ -165,12 +165,17 @@ abstract class PagedTimelineViewModel(
         },
     ) { span ->
         zone.flatMapLatest { zone ->
+            val range = spanRange(span.start, span.count, zone)
             combine(
                 repository.calendars(),
-                repository.instances(spanRange(span.start, span.count, zone)),
+                repository.instances(range),
                 today,
-            ) { calendars, instances, today ->
-                buildState(span, calendars, instances, today, zone)
+                de.jeanlucmakiola.calendula.hebrew.HebrewCal.version,
+            ) { calendars, instances, today, _ ->
+                // זמני כניסת/יציאת שבת מופיעים רק בתצוגת יום (כניסה לתאריך).
+                val times = if (span.count == 1) de.jeanlucmakiola.calendula.hebrew.HebrewCal.timeInstances(range)
+                else emptyList()
+                buildState(span, calendars, instances + times, today, zone)
             }
         }
             .catch { emit(WeekUiState.Failure(FailureReason.ProviderUnavailable)) }
