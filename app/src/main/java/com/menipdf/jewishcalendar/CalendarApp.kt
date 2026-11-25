@@ -2,6 +2,7 @@ package com.menipdf.jewishcalendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,9 +28,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,11 +51,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -68,8 +71,9 @@ fun CalendarApp(vm: AppViewModel = viewModel()) {
         val drawer = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         var showSettings by remember { mutableStateOf(false) }
+        var showPicker by remember { mutableStateOf(false) }
         var selected by remember { mutableStateOf<Ev?>(null) }
-        var viewMenu by remember { mutableStateOf(false) }
+        var dayDetail by remember { mutableStateOf<LocalDate?>(null) }
 
         ModalNavigationDrawer(
             drawerState = drawer,
@@ -84,42 +88,16 @@ fun CalendarApp(vm: AppViewModel = viewModel()) {
         ) {
             Scaffold(
                 topBar = {
-                    TopAppBar(
-                        title = { Text("יומן עברי", fontSize = 20.sp) },
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawer.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "תפריט")
-                            }
-                        },
-                        actions = {
-                            TextButton(onClick = { vm.today() }) { Text("היום") }
-                            Box {
-                                TextButton(onClick = { viewMenu = true }) {
-                                    Text(vm.view.label)
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
-                                DropdownMenu(expanded = viewMenu, onDismissRequest = { viewMenu = false }) {
-                                    ViewMode.values().forEach { m ->
-                                        DropdownMenuItem(
-                                            text = { Text(m.label) },
-                                            onClick = {
-                                                vm.view = m
-                                                vm.save()
-                                                viewMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            IconButton(onClick = { showSettings = true }) {
-                                Icon(Icons.Default.Settings, contentDescription = "הגדרות")
-                            }
-                        }
+                    CalendarTopBar(
+                        vm = vm, engine = engine,
+                        onMenu = { scope.launch { drawer.open() } },
+                        onSettings = { showSettings = true },
+                        onPickMonth = { showPicker = true }
                     )
                 }
             ) { pad ->
                 Column(Modifier.padding(pad).fillMaxSize()) {
-                    RangeHeader(vm, engine)
+                    NavRow(vm)
                     Box(
                         Modifier
                             .weight(1f)
@@ -127,7 +105,7 @@ fun CalendarApp(vm: AppViewModel = viewModel()) {
                             .swipeNav(vm)
                     ) {
                         when (vm.view) {
-                            ViewMode.MONTH -> MonthView(vm, engine) { selected = it }
+                            ViewMode.MONTH -> MonthView(vm, engine) { dayDetail = it }
                             ViewMode.WEEK -> WeekView(vm, engine) { selected = it }
                             ViewMode.DAY -> DayView(vm, engine) { selected = it }
                             ViewMode.AGENDA -> AgendaView(vm, engine) { selected = it }
@@ -137,8 +115,24 @@ fun CalendarApp(vm: AppViewModel = viewModel()) {
             }
         }
 
+        dayDetail?.let { d ->
+            DaySheet(
+                date = d, engine = engine, enabled = vm.filters.toMap(),
+                onEvent = { selected = it },
+                onOpenDay = { dayDetail = null; vm.goDay(d) },
+                onDismiss = { dayDetail = null }
+            )
+        }
         selected?.let { EventDialog(it, engine) { selected = null } }
         if (showSettings) SettingsDialog(vm) { showSettings = false }
+        if (showPicker) {
+            MonthPicker(vm.cursor, onDismiss = { showPicker = false }) {
+                vm.cursor = it
+                vm.view = ViewMode.MONTH
+                vm.save()
+                showPicker = false
+            }
+        }
     }
 }
 
@@ -155,10 +149,11 @@ private fun Modifier.swipeNav(vm: AppViewModel): Modifier = pointerInput(vm.view
     )
 }
 
-@Composable
-private fun RangeHeader(vm: AppViewModel, engine: Engine) {
+/* ---------- כותרת עליונה ---------- */
+
+fun titleAndSub(vm: AppViewModel, engine: Engine): Pair<String, String> {
     val c = vm.cursor
-    val (title, sub) = when (vm.view) {
+    return when (vm.view) {
         ViewMode.MONTH -> {
             val first = c.withDayOfMonth(1)
             val last = c.withDayOfMonth(c.lengthOfMonth())
@@ -178,6 +173,56 @@ private fun RangeHeader(vm: AppViewModel, engine: Engine) {
                 engine.hebRange(c, b)
         }
     }
+}
+
+/**
+ * שורה 1: תפריט | כותרת החודש (לחיצה פותחת בורר חודש) | היום | הגדרות.
+ * הכותרת היא האלמנט הבולט; שאר הפעולות קטנות ושקטות.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalendarTopBar(
+    vm: AppViewModel,
+    engine: Engine,
+    onMenu: () -> Unit,
+    onSettings: () -> Unit,
+    onPickMonth: () -> Unit
+) {
+    val (title, sub) = titleAndSub(vm, engine)
+    TopAppBar(
+        title = {
+            Row(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clickable(onClickLabel = "בחירת חודש", onClick = onPickMonth),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(title, fontSize = 20.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text(
+                        sub, style = JcText.hebDay, maxLines = 1,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, contentDescription = "תפריט ראשי") }
+        },
+        actions = {
+            FilledTonalButton(onClick = { vm.today() }, modifier = Modifier.heightIn(min = 40.dp)) { Text("היום") }
+            IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, contentDescription = "הגדרות") }
+        }
+    )
+}
+
+/**
+ * שורה 2: חץ הקודם | בורר תצוגה | חץ הבא.
+ * ב-RTL "הקודם" נמצא מימין. החצים אינם מתהפכים אוטומטית, לכן הכיוון נבחר במפורש.
+ */
+@Composable
+fun NavRow(vm: AppViewModel) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -185,14 +230,74 @@ private fun RangeHeader(vm: AppViewModel, engine: Engine) {
         IconButton(onClick = { vm.shift(-1) }) {
             Icon(Icons.Default.KeyboardArrowRight, contentDescription = "הקודם")
         }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ViewMode.values().forEach { m ->
+                FilterChip(
+                    selected = vm.view == m,
+                    onClick = {
+                        vm.view = m
+                        vm.save()
+                    },
+                    label = { Text(m.short, style = JcText.chip, maxLines = 1) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
         IconButton(onClick = { vm.shift(1) }) {
             Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "הבא")
         }
     }
+}
+
+/* ---------- בורר חודש ושנה ---------- */
+@Composable
+private fun MonthPicker(current: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
+    var year by remember { mutableStateOf(current.year) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("סגור") } },
+        title = {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { year -= 1 }) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "שנה קודמת")
+                }
+                Text("$year", fontSize = 22.sp, fontWeight = FontWeight.Medium)
+                IconButton(onClick = { year += 1 }) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "שנה הבאה")
+                }
+            }
+        },
+        text = {
+            Column {
+                for (r in 0 until 4) {
+                    Row(Modifier.fillMaxWidth()) {
+                        for (k in 0 until 3) {
+                            val m = r * 3 + k + 1
+                            val sel = year == current.year && m == current.monthValue
+                            TextButton(
+                                onClick = { onPick(LocalDate.of(year, m, 1)) },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                            ) {
+                                Text(
+                                    GREG_MONTHS[m - 1], maxLines = 1,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 /* ---------- תפריט צד ---------- */
@@ -215,7 +320,7 @@ private fun DrawerContent(vm: AppViewModel, engine: Engine, onSettings: () -> Un
             )
             Text(
                 "${today.weekdayName()}, ${today.longDate()}",
-                fontSize = 12.sp,
+                style = JcText.hebDay,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             next.parsha?.let {
@@ -227,7 +332,7 @@ private fun DrawerContent(vm: AppViewModel, engine: Engine, onSettings: () -> Un
             Spacer(Modifier.height(10.dp))
             Text(
                 "${engine.city.name} · ${vm.candleMinutes} דק׳ לפני השקיעה",
-                fontSize = 11.sp,
+                style = JcText.caption,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -237,6 +342,7 @@ private fun DrawerContent(vm: AppViewModel, engine: Engine, onSettings: () -> Un
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
                     .clickable {
                         vm.filters[cat] = !(vm.filters[cat] ?: true)
                         vm.save()
@@ -255,7 +361,7 @@ private fun DrawerContent(vm: AppViewModel, engine: Engine, onSettings: () -> Un
             }
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        TextButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = onSettings, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("הגדרות ומיקום", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
         }
     }
@@ -268,11 +374,11 @@ private fun ShabbatRow(e: Ev, engine: Engine) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(e.label, fontWeight = FontWeight.Medium)
             Text(
                 "${e.date.weekdayName()}, ${e.date.longDate()}",
-                fontSize = 12.sp,
+                style = JcText.caption,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -297,11 +403,11 @@ private fun EventDialog(e: Ev, engine: Engine, onDismiss: () -> Unit) {
             }
         },
         text = {
-            Column {
+            Column(Modifier.semantics { contentDescription = "פרטי אירוע" }) {
                 Text(
                     "${e.date.weekdayName()}, ${e.date.longDate()} · ${engine.hebFull(e.date)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
+                    style = JcText.hebDay
                 )
                 e.timeMillis?.let {
                     Spacer(Modifier.height(6.dp))
@@ -314,7 +420,7 @@ private fun EventDialog(e: Ev, engine: Engine, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Text(
                     "${e.cat.label} · ${engine.city.name}",
-                    fontSize = 12.sp,
+                    style = JcText.caption,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

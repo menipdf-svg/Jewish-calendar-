@@ -48,8 +48,8 @@ data class City(
     val group: String
 )
 
-enum class ViewMode(val label: String) {
-    MONTH("חודש"), WEEK("שבוע"), DAY("יום"), AGENDA("לוח זמנים")
+enum class ViewMode(val label: String, val short: String) {
+    MONTH("חודש", "חודש"), WEEK("שבוע", "שבוע"), DAY("יום", "יום"), AGENDA("לוח זמנים", "רשימה")
 }
 
 val CITIES = listOf(
