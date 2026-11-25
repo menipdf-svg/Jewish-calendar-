@@ -60,7 +60,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         save()
     }
 
-    fun setCustom(c: City) {
+    fun useCustom(c: City) {
         custom = c
         cityId = "custom"
         candleOverride = -1

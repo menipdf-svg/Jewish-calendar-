@@ -64,7 +64,7 @@ fun SettingsDialog(vm: AppViewModel, onDismiss: () -> Unit) {
             return
         }
         val tz = TimeZone.getDefault().id
-        vm.setCustom(City("custom", "המיקום שלי", loc.latitude, loc.longitude, tz, tz == "Asia/Jerusalem", 18, "מיקום"))
+        vm.useCustom(City("custom", "המיקום שלי", loc.latitude, loc.longitude, tz, tz == "Asia/Jerusalem", 18, "מיקום"))
         msg = "המיקום עודכן."
     }
 
