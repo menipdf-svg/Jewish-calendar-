@@ -21,8 +21,12 @@ jobs:
           java-version: 17
       - name: Install SDK packages
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses >/dev/null || true
+          "$SDKM" --list --channel=3 2>/dev/null | grep -E "platforms;android-3[67]" || true
+          PLAT=$("$SDKM" --list --channel=3 2>/dev/null | grep -oE "platforms;android-37[^ ]*" | head -1)
+          echo "platform: $PLAT"
+          "$SDKM" --channel=3 "${PLAT:-platforms;android-37}" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
