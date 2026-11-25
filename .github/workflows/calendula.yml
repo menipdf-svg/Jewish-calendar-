@@ -14,7 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch floret-kit (was a submodule)
-        run: git clone --depth 1 https://codeberg.org/jlmakiola/floret-kit.git floret-kit
+        run: |
+          git clone https://codeberg.org/jlmakiola/floret-kit.git floret-kit
+          cd floret-kit
+          SHA=$(git rev-list -n 1 --before="2026-11-25T12:00:00Z" HEAD)
+          git checkout -q "$SHA"
+          echo "floret-kit pinned at $SHA"; git log -1 --format='%H %cd'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
