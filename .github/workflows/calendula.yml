@@ -17,6 +17,7 @@ jobs:
         run: |
           git clone https://codeberg.org/jlmakiola/floret-kit.git floret-kit
           cd floret-kit
+          git log -25 --format='FLORETLOG %h %cI %s'
           SHA=$(git rev-list -n 1 --before="2026-11-25T12:00:00Z" HEAD)
           git checkout -q "$SHA"
           echo "floret-kit pinned at $SHA"; git log -1 --format='%H %cd'
