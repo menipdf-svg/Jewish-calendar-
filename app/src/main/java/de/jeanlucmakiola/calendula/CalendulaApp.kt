@@ -31,6 +31,7 @@ class CalendulaApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        de.jeanlucmakiola.calendula.hebrew.HebrewCal.init(this)
         // Install first thing so startup crashes are captured too (privacy-
         // respecting, on-device; the user submits the report by hand). The
         // capture/loop-detection/report machinery lives in floret-kit's

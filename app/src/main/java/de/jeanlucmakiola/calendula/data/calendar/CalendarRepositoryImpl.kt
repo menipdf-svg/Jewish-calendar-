@@ -143,10 +143,12 @@ class CalendarRepositoryImpl @Inject constructor(
                 )
             },
             prefs.hiddenCalendarIds,
-        ) { queried, hidden ->
+            de.jeanlucmakiola.calendula.hebrew.HebrewCal.version,
+        ) { queried, hidden, _ ->
             val excluded = hidden + queried.switchedOffCalendarIds
-            if (excluded.isEmpty()) queried.instances
+            val base = if (excluded.isEmpty()) queried.instances
             else queried.instances.filterNot { it.calendarId in excluded }
+            base + de.jeanlucmakiola.calendula.hebrew.HebrewCal.instances(range)
         }
             // Any DataStore edit re-emits the hidden set even when unchanged;
             // collapse those so views don't re-render for them.

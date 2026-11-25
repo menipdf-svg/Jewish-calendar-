@@ -182,6 +182,7 @@ dependencies {
     implementation("de.jeanlucmakiola.floret:identity")
     implementation("de.jeanlucmakiola.floret:components")
     implementation("de.jeanlucmakiola.floret:glance")
+    implementation("com.kosherjava:zmanim:2.5.0")
     implementation(libs.kotlinx.coroutines.core)
 
     debugImplementation(libs.androidx.ui.tooling)

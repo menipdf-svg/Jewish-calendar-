@@ -94,6 +94,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
@@ -2797,6 +2799,24 @@ private fun DayNumberCell(
         modifier = modifier.height(DAY_NUMBER_HEIGHT),
         contentAlignment = Alignment.Center,
     ) {
+        val hebVersion by de.jeanlucmakiola.calendula.hebrew.HebrewCal.version.collectAsState()
+        val hebDay = remember(date, hebVersion) {
+            if (!de.jeanlucmakiola.calendula.hebrew.HebrewCal.enabled) ""
+            else runCatching {
+                de.jeanlucmakiola.calendula.hebrew.HebrewCal.engine
+                    .hebDay(java.time.LocalDate.of(date.year, date.month.number, date.day))
+            }.getOrDefault("")
+        }
+        if (hebDay.isNotEmpty()) {
+            Text(
+                text = hebDay,
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (inMonth) 0.9f else 0.4f),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
+            )
+        }
         if (isToday) {
             Box(
                 modifier = Modifier

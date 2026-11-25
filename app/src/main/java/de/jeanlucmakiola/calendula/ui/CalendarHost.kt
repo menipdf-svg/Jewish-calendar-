@@ -463,7 +463,11 @@ fun CalendarHost(
         tapAwaitingWrite?.let { editKey = it }
         tapAwaitingWrite = null
     }
+    val hebrewContext = androidx.compose.ui.platform.LocalContext.current
     val onEventClick: (EventInstance) -> Unit = { event ->
+      if (de.jeanlucmakiola.calendula.hebrew.HebrewCal.isSynthetic(event)) {
+        android.widget.Toast.makeText(hebrewContext, event.title, android.widget.Toast.LENGTH_SHORT).show()
+      } else
         tapScope.launch {
             val toEditor = viewModel.tapOpensEditor() && eventActions.canModify(event.calendarId)
             when {
