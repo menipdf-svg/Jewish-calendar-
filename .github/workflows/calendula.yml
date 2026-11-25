@@ -34,6 +34,14 @@ jobs:
         run: |
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
           "$AAPT" dump badging app/build/outputs/apk/debug/*.apk | grep -E "^package|sdkVersion|targetSdk|native-code|uses-feature|compileSdk" || true
+      - name: Diagnose signing and alignment
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | head -12 || true
+          "$BT/zipalign" -c -P 16 -v 4 "$APK" | grep -E "lib/arm64|Verification" | head -10 || true
+          "$BT/aapt2" dump badging "$APK" | grep -iE "minSdk|sdkVersion:|application-debuggable|extractNative|launchable" | head
+          unzip -l "$APK" | grep -E "lib/arm64" | head
       - name: Collect APK
         run: |
           mkdir -p out
