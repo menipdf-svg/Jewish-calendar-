@@ -2804,7 +2804,7 @@ private fun DayNumberCell(
             if (!de.jeanlucmakiola.calendula.hebrew.HebrewCal.enabled) ""
             else runCatching {
                 de.jeanlucmakiola.calendula.hebrew.HebrewCal.engine
-                    .hebDay(java.time.LocalDate.of(date.year, date.month.number, date.day))
+                    .hebDay(java.time.LocalDate.of(date.year, date.month.ordinal + 1, date.day))
             }.getOrDefault("")
         }
         if (hebDay.isNotEmpty()) {
