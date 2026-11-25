@@ -1,0 +1,2 @@
+Corregido
+• Al abrir la app a la mañana siguiente, se muestra el día correcto. La vista de mes marcaba ayer como hoy y dejaba seleccionado el día que elegiste la noche anterior. Ahora todas las vistas pasan al nuevo día.

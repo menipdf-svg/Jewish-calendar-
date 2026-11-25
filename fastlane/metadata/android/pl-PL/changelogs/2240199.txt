@@ -1,0 +1,12 @@
+Nowości
+• Klasyczny styl widżetu agendy.
+• Suwak przezroczystości tła widżetów.
+
+Poprawki
+• Numery tygodni były o jeden za niskie, gdy tydzień zaczyna się w niedzielę.
+• Widżet miesiąca pokazuje wydarzenia przy każdej wysokości.
+• Przyciemnione wydarzenia w ciemnych widżetach znów są czytelne.
+• Widżety z jasnym lub ciemnym motywem pasują do kolorów systemu.
+
+Zmiany
+• Mniej uprawnień.

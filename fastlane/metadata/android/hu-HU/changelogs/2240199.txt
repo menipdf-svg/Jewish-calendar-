@@ -1,0 +1,12 @@
+Újdonságok
+• Klasszikus stílus a napirend widgethez.
+• Átlátszóság-csúszka a widgetek hátteréhez.
+
+Javítva
+• A hetek száma eggyel kevesebb volt, ha a hét vasárnap kezdődik.
+• A havi widget bármilyen magasságban mutatja az eseményeket.
+• A halványított események ismét olvashatók a sötét widgeteken.
+• A világos vagy sötét widgetek a rendszer színeit követik.
+
+Változások
+• Kevesebb engedély.

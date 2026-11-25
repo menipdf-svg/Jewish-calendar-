@@ -1,0 +1,13 @@
+Novinky
+• Sedm nových widgetů, mimo jiné rychlé přidání, pruh týdne, odpočet a měsíc se dnem.
+• Každý widget má vlastní nastavení: pozadí, motiv a kalendáře.
+• Nový vzhled widgetů agendy a měsíce.
+• Celodenní události lze přetáhnout na jiný den nebo do mřížky.
+• Zrušené a předběžné události jsou označené.
+• Možnost skrýt časy začátku v zobrazení měsíce.
+
+Opraveno
+• Krátké události pozdě večer jsou vidět celé.
+
+Změněno
+• Jedno oznámení na událost.

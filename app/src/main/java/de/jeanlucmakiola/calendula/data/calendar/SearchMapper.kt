@@ -1,0 +1,40 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import de.jeanlucmakiola.floret.time.toKotlinInstantFromEpochMillis
+import de.jeanlucmakiola.calendula.domain.EventInstance
+
+/**
+ * Map an Events-table row (a search hit) to an [EventInstance]. Unlike the
+ * Instances query this reads the series master, so there is no instance id (the
+ * event id stands in as the list key) and recurring rows carry DURATION instead
+ * of DTEND — reconstruct the end the same way the `.ics` export does.
+ */
+internal fun ColumnReader.toSearchResult(): EventInstance? {
+    // A pre-1970 series anchor is a legitimately negative epoch-millis DTSTART
+    // (see EventDetailMapper / issue #34); drop only a genuinely absent one, so
+    // long-running birthdays/anniversaries still surface in search.
+    if (isNull(SearchProjection.IDX_DTSTART)) return null
+    val dtStart = getLong(SearchProjection.IDX_DTSTART)
+    val end = endMillis(dtStart, SearchProjection.IDX_DTEND, SearchProjection.IDX_DURATION)
+        .coerceAtLeast(dtStart)
+
+    val title = getString(SearchProjection.IDX_TITLE).orEmpty()
+    val color = getIntOrNull(SearchProjection.IDX_EVENT_COLOR) ?: getInt(SearchProjection.IDX_CALENDAR_COLOR)
+    val eventId = getLong(SearchProjection.IDX_ID)
+
+    return EventInstance(
+        instanceId = eventId,
+        eventId = eventId,
+        calendarId = getLong(SearchProjection.IDX_CALENDAR_ID),
+        title = title,
+        start = dtStart.toKotlinInstantFromEpochMillis(),
+        end = end.toKotlinInstantFromEpochMillis(),
+        isAllDay = getInt(SearchProjection.IDX_ALL_DAY) != 0,
+        color = color,
+        location = getString(SearchProjection.IDX_LOCATION),
+        isRecurring = !getString(SearchProjection.IDX_RRULE).isNullOrEmpty() ||
+            !getString(SearchProjection.IDX_RDATE).isNullOrEmpty(),
+        response = mapEventResponse(getInt(SearchProjection.IDX_SELF_ATTENDEE_STATUS)),
+        status = eventStatus(SearchProjection.IDX_STATUS),
+    )
+}

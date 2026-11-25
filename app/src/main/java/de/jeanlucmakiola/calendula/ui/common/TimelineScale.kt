@@ -1,0 +1,245 @@
+package de.jeanlucmakiola.calendula.ui.common
+
+import androidx.annotation.StringRes
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import de.jeanlucmakiola.calendula.R
+import de.jeanlucmakiola.calendula.ui.week.MINUTES_PER_DAY
+import de.jeanlucmakiola.calendula.ui.week.TimedBlock
+
+/**
+ * How tall one hour is drawn in the week and day timelines (#56).
+ *
+ * One shared setting for both views: they are the same grid at different widths,
+ * and a scale that only applied to one of them would read as a bug.
+ *
+ * [FitDay] is the answer to the actual complaint behind the issue — on a tall
+ * phone the default scale shows about half a day, so a whole week can hide
+ * appointments below the fold. It derives the hour height from the timeline's
+ * own viewport instead of a fixed value.
+ *
+ * [Custom] is what a pinch on the timeline leaves behind. The presets are the
+ * settings-screen vocabulary; a pinch is a direct manipulation and should be
+ * able to land anywhere between them, so it gets its own case rather than
+ * snapping to the nearest named step.
+ */
+sealed interface TimelineScale {
+
+    /** Whole day in one screen: the hour height follows the viewport. */
+    data object FitDay : TimelineScale
+
+    /** Denser than the default, still a fixed height. */
+    data object Compact : TimelineScale
+
+    /** The historical 56dp scale. */
+    data object Regular : TimelineScale
+
+    /** Roomier blocks, more scrolling. */
+    data object Comfortable : TimelineScale
+
+    /** A height the user pinched to. Build it through [custom], which clamps. */
+    data class Custom(val hourHeight: Dp) : TimelineScale
+
+    /**
+     * [startHour]..[endHour] fills the viewport (#322). Applied when a timeline
+     * opens with [TimelineHours] on, never picked from the preset list.
+     */
+    data class FitHours(val startHour: Int, val endHour: Int) : TimelineScale
+
+    companion object {
+        /** The named steps the settings picker offers, coarse to roomy. */
+        val presets: List<TimelineScale> = listOf(FitDay, Compact, Regular, Comfortable)
+
+        /**
+         * A pinched hour height. The floor a pinch actually stops at depends on
+         * the viewport and is applied when the height is resolved (see
+         * [hourHeight]); this only holds a stored value to something sane.
+         */
+        fun custom(hourHeight: Dp): Custom =
+            Custom(hourHeight.coerceIn(MIN_STORED_HOUR_HEIGHT, MAX_PINCH_HOUR_HEIGHT))
+    }
+}
+
+/**
+ * Hour height for this scale. [viewportHeight] is the height the day is fitted
+ * to, the scrolling timeline's [dayFitHeight], and is not consulted by the
+ * fixed presets.
+ *
+ * The fit-day result is clamped: below [FIT_DAY_MIN] the 24 gutter labels stop
+ * being legible, and above [FIT_DAY_MAX] a short landscape day would stretch its
+ * blocks absurdly. On a screen too short for the whole day the clamp wins and
+ * the timeline still scrolls a little — honest, rather than unreadable.
+ *
+ * A pinched height is held to [fillHourHeight] here and not only in the gesture,
+ * because the viewport can change under a height that was already stored: pinch
+ * all the way out in landscape and the same value would leave portrait with dead
+ * space under midnight.
+ */
+fun TimelineScale.hourHeight(viewportHeight: Dp): Dp = when (this) {
+    TimelineScale.FitDay -> (viewportHeight / 24f).coerceIn(FIT_DAY_MIN, FIT_DAY_MAX)
+    TimelineScale.Compact -> 40.dp
+    TimelineScale.Regular -> 56.dp
+    TimelineScale.Comfortable -> 80.dp
+    is TimelineScale.Custom -> this.hourHeight
+        .coerceAtMost(MAX_PINCH_HOUR_HEIGHT)
+        .coerceAtLeast(fillHourHeight(viewportHeight))
+    is TimelineScale.FitHours -> (viewportHeight / (endHour - startHour).coerceIn(1, 24).toFloat())
+        .coerceAtMost(MAX_PINCH_HOUR_HEIGHT)
+        .coerceAtLeast(fillHourHeight(viewportHeight))
+}
+
+/**
+ * The part of a [viewportHeight]-tall timeline the day is fitted to: the
+ * [FabClearance] under midnight, which lets the last hour scroll clear of the
+ * FAB (#483), is left out. Pass this, not the raw viewport, to [hourHeight].
+ */
+fun dayFitHeight(viewportHeight: Dp): Dp = (viewportHeight - FabClearance).coerceAtLeast(0.dp)
+
+/**
+ * The minute of the day a tap [offsetY] px down a timeline column means, snapped
+ * to the hour it landed in.
+ *
+ * [hourPx] must be the hour height the column is drawing at *now* — a tap
+ * detector that captured it when it was installed maps taps to a pre-pinch grid
+ * (#148). A zero or negative height (a viewport measured at nothing) has no grid
+ * to read, so it answers midnight rather than dividing by it.
+ */
+fun tappedMinuteOfDay(offsetY: Float, hourPx: Float): Int =
+    if (hourPx <= 0f) 0 else (offsetY / hourPx).toInt().coerceIn(0, 23) * 60
+
+/**
+ * Shortest an event block may render, as a fraction of an hour. Blocks keep a
+ * floor so a 15-minute event stays tappable, but the floor scales with the hour
+ * height — a fixed 24dp would swallow half an hour once zoomed out and make
+ * short events overlap their neighbours.
+ */
+const val MIN_EVENT_FRACTION = 26f / 60f
+
+/** Where a timed block is drawn down its day, in minutes from midnight. */
+data class RenderedSpan(val topMin: Float, val bottomMin: Float)
+
+/**
+ * Where a block of [startMin]..[endMin] is drawn, at least [MIN_EVENT_FRACTION]
+ * of an hour tall. A short block near midnight rises until that floor ends at
+ * midnight instead of running off the day, unless it [continuesAfter] into the
+ * next one (#483).
+ */
+fun renderedSpan(startMin: Int, endMin: Int, continuesAfter: Boolean): RenderedSpan {
+    val floor = MIN_EVENT_FRACTION * 60f
+    val bottom = maxOf(endMin.toFloat(), startMin + floor)
+    return if (continuesAfter || bottom <= MINUTES_PER_DAY) {
+        RenderedSpan(startMin.toFloat(), bottom)
+    } else {
+        RenderedSpan(MINUTES_PER_DAY - floor, MINUTES_PER_DAY.toFloat())
+    }
+}
+
+/** This block's [renderedSpan]. */
+fun TimedBlock.renderedSpan(): RenderedSpan = renderedSpan(startMin, endMin, continuesAfter)
+
+/** Smallest hour height [TimelineScale.FitDay] will resolve to. */
+val FIT_DAY_MIN = 24.dp
+
+/** Largest hour height [TimelineScale.FitDay] will resolve to. */
+val FIT_DAY_MAX = 96.dp
+
+/**
+ * The hour height at which all 24 hours exactly fill [viewportHeight] — how far
+ * out a pinch can zoom.
+ *
+ * Below it there is no more day left to uncover, so the only thing shrinking
+ * further buys is empty space under midnight. Zooming out means "show me more of
+ * the day", and once the whole day is on screen that request is answered.
+ */
+fun fillHourHeight(viewportHeight: Dp): Dp = viewportHeight / 24f
+
+/**
+ * Ceiling for a pinch, deliberately far above [TimelineScale.Comfortable]: a
+ * pinch is a deliberate act, so someone zooming in on a single busy afternoon
+ * should be allowed to go further than any preset offers.
+ */
+val MAX_PINCH_HOUR_HEIGHT = 240.dp
+
+/**
+ * Floor for a *stored* pinched height, which only has to stay sane enough to be
+ * re-clamped against whatever viewport it is later shown in. The floor a pinch
+ * stops at is [fillHourHeight].
+ */
+private val MIN_STORED_HOUR_HEIGHT = 1.dp
+
+@get:StringRes
+val TimelineScale.labelRes: Int
+    get() = when (this) {
+        TimelineScale.FitDay -> R.string.timeline_scale_fit_day
+        TimelineScale.Compact -> R.string.timeline_scale_compact
+        TimelineScale.Regular -> R.string.timeline_scale_regular
+        TimelineScale.Comfortable -> R.string.timeline_scale_comfortable
+        is TimelineScale.Custom -> R.string.timeline_scale_custom
+        is TimelineScale.FitHours -> R.string.settings_visible_hours
+    }
+
+@get:StringRes
+val TimelineScale.descriptionRes: Int
+    get() = when (this) {
+        TimelineScale.FitDay -> R.string.timeline_scale_fit_day_summary
+        TimelineScale.Compact -> R.string.timeline_scale_compact_summary
+        TimelineScale.Regular -> R.string.timeline_scale_regular_summary
+        TimelineScale.Comfortable -> R.string.timeline_scale_comfortable_summary
+        is TimelineScale.Custom -> R.string.timeline_scale_custom_summary
+        is TimelineScale.FitHours -> R.string.settings_visible_hours_summary
+    }
+
+/** Marks a stored custom height; the rest of the value is its dp. */
+private const val CUSTOM_PREFIX = "custom:"
+
+/** Marks a stored hour range, as `start-end`. */
+private const val HOURS_PREFIX = "hours:"
+
+/**
+ * Stored names for the presets. Spelled out rather than taken from `toString()`
+ * so R8 can't rename them out from under an existing install — and they match
+ * the enum names this used to be, so a value written before the pinch existed
+ * still reads back as the same preset.
+ */
+private val PRESET_NAMES: Map<TimelineScale, String> = mapOf(
+    TimelineScale.FitDay to "FitDay",
+    TimelineScale.Compact to "Compact",
+    TimelineScale.Regular to "Regular",
+    TimelineScale.Comfortable to "Comfortable",
+)
+
+/**
+ * Serialise for the `timeline_scale` preference; see [parseTimelineScale].
+ *
+ * Spelled out rather than an `else` into [PRESET_NAMES], so a preset added later
+ * without a stored name is a compile error here instead of a crash the first
+ * time someone picks it.
+ */
+fun TimelineScale.storageValue(): String = when (this) {
+    is TimelineScale.Custom -> CUSTOM_PREFIX + hourHeight.value
+    is TimelineScale.FitHours -> "$HOURS_PREFIX$startHour-$endHour"
+    TimelineScale.FitDay,
+    TimelineScale.Compact,
+    TimelineScale.Regular,
+    TimelineScale.Comfortable,
+    -> PRESET_NAMES.getValue(this)
+}
+
+/**
+ * Parse a stored scale. Anything unrecognised — a null key, a name from a
+ * future release, a truncated custom height — falls back to
+ * [TimelineScale.Regular] rather than throwing, like the other enum prefs.
+ */
+fun parseTimelineScale(stored: String?): TimelineScale = when {
+    stored == null -> TimelineScale.Regular
+    stored.startsWith(CUSTOM_PREFIX) -> stored.removePrefix(CUSTOM_PREFIX).toFloatOrNull()
+        ?.let { TimelineScale.custom(it.dp) }
+        ?: TimelineScale.Regular
+    stored.startsWith(HOURS_PREFIX) -> stored.removePrefix(HOURS_PREFIX).split('-')
+        .mapNotNull { it.toIntOrNull() }
+        .takeIf { it.size == 2 }
+        ?.let { (start, end) -> TimelineHours.of(enabled = true, start, end) }
+        ?.let { TimelineScale.FitHours(it.startHour, it.endHour) }
+        ?: TimelineScale.Regular
+    else -> PRESET_NAMES.entries.firstOrNull { it.value == stored }?.key ?: TimelineScale.Regular
+}

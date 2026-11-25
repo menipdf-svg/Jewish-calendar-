@@ -1,0 +1,3 @@
+Opravené
+• Upravené, presunuté a odstránené udalosti sa teraz na každom telefóne prejavia hneď. Na niektorých, okrem iného Samsungu, zostala zmenená udalosť bez zmeny až do reštartu aplikácie.
+• Widgety na domovskej obrazovke načítavajú len udalosti, ktoré zobrazujú. To by malo pomôcť widgetom, ktoré na pomalších telefónoch zostávali na „načítava sa“.

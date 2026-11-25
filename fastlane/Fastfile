@@ -1,0 +1,74 @@
+# Google Play publishing only.
+#
+# Building and signing are deliberately NOT fastlane's job: release.yaml drives
+# Gradle directly so the release build stays F-Droid-reproducible (`vcsInfo`,
+# `dependenciesInfo` and the AGP metadata block are disabled in
+# app/build.gradle.kts and guarded by scripts/check_reproducible_release.sh).
+# Interposing fastlane there would add a layer that can inject Gradle flags into
+# the one build whose byte-for-byte output is verified by a third party.
+#
+# What fastlane IS here for is `supply` — the Play Developer API client — because
+# the store listing lives in fastlane/metadata/android, which the official
+# F-Droid repo harvests from the tagged source tree. One metadata tree, two
+# stores; nothing about the Play listing is edited in the console.
+
+default_platform(:android)
+
+# fastlane runs a lane body with the working directory set to `fastlane/`, not
+# the project root, so a relative artifact path from the caller has to be
+# resolved explicitly. Absolute paths pass through untouched.
+def project_path(path)
+  File.expand_path(path, File.expand_path("..", FastlaneCore::FastlaneFolder.path || "."))
+end
+
+# Listing text, graphics and screenshots all come from fastlane/metadata/android;
+# scripts/check_store_listing.py keeps the tree within Play's rules on every PR.
+LISTING = {
+  skip_upload_metadata: false,
+  skip_upload_images: false,
+  skip_upload_screenshots: false,
+  # Only re-upload graphics whose content changed.
+  sync_image_upload: true,
+}.freeze
+
+platform :android do
+  desc "Upload an already-built, already-signed AAB to Play, with the store listing"
+  lane :deploy do |options|
+    aab = project_path(options[:aab] || "app/build/outputs/bundle/release/app-release.aab")
+    UI.user_error!("AAB not found at #{aab}") unless File.exist?(aab)
+
+    supply(
+      aab: aab,
+      track: options[:track] || "production",
+      release_status: options[:release_status] || "completed",
+
+      # The APK belongs to F-Droid and the Codeberg download; Play only ever
+      # gets the bundle. Never let the uploader reach for the other artifact.
+      skip_upload_apk: true,
+
+      # "What's New" tracks every release: changelogs/<versionCode>.txt, the
+      # same file F-Droid shows.
+      skip_upload_changelogs: false,
+
+      # Dry run: validate the edit against the API and roll it back instead of
+      # committing it. Used for the first end-to-end rehearsal.
+      validate_only: options[:dry_run].to_s == "true",
+      **LISTING,
+    )
+  end
+
+  desc "Push only the store listing, e.g. a listing fix between releases"
+  lane :listing do |options|
+    # supply still anchors the edit on a release: pass version_code: when the
+    # track holds more than one.
+    supply(
+      track: options[:track] || "production",
+      version_code: options[:version_code],
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: true,
+      validate_only: options[:dry_run].to_s == "true",
+      **LISTING,
+    )
+  end
+end

@@ -1,0 +1,13 @@
+Nowości
+• Siedem nowych widżetów, m.in. szybkie dodawanie, pasek tygodnia, odliczanie i miesiąc z dniem.
+• Każdy widżet ma własne ustawienia: tło, motyw i kalendarze.
+• Nowy wygląd widżetów agendy i miesiąca.
+• Przeciągaj wydarzenia całodniowe na inny dzień lub do siatki.
+• Wydarzenia odwołane i wstępne są oznaczone.
+• Opcja ukrycia godzin rozpoczęcia w widoku miesiąca.
+
+Poprawki
+• Krótkie wydarzenia późnym wieczorem są w pełni widoczne.
+
+Zmiany
+• Jedno powiadomienie na wydarzenie.

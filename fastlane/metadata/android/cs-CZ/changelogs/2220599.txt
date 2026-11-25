@@ -1,0 +1,2 @@
+Opraveno
+• Když aplikaci otevřete druhý den ráno, ukáže správný den. Měsíc dřív označoval včerejšek jako dnešek a nechával vybraný den, který jste zvolili večer předtím. Všechna zobrazení teď přejdou na nový den.

@@ -1,0 +1,3 @@
+Corrigido
+• Os eventos editados, movidos ou eliminados aparecem logo atualizados em qualquer telemóvel. Em alguns, incluindo Samsung, um evento alterado só mudava depois de reiniciar a app.
+• Os widgets do ecrã inicial carregam apenas os eventos que mostram. Isto deve ajudar os widgets que ficavam em «a carregar» em telemóveis mais lentos.

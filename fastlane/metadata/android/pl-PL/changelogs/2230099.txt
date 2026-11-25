@@ -1,0 +1,11 @@
+Nowości
+• Przytrzymaj wydarzenie, aby je zaznaczyć, przenieść lub zmienić długość, albo wolne miejsce, by dodać nowe.
+• Dotknij numeru telefonu, aby zadzwonić.
+• Opisy HTML wyświetlają się sformatowane.
+• Przewijaj agendę wstecz do wcześniejszych dni.
+• Twórz wydarzenia z udostępnionego lub zaznaczonego tekstu.
+• Czarny motyw dla ekranów AMOLED.
+
+Poprawki
+• Wydarzenia w dni zmiany czasu są pokazywane o właściwej godzinie.
+• Przeniesiona seria zachowuje usunięte i edytowane wystąpienia.

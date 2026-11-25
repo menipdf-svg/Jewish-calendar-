@@ -1,0 +1,11 @@
+AuthorName: Jean-Luc Makiola
+License: MIT
+Name: Calendula
+Summary: A Material 3 Expressive calendar for Android with no network access.
+
+Categories:
+  - Calendar & Agenda
+
+SourceCode: https://codeberg.org/jlmakiola/calendula
+IssueTracker: https://codeberg.org/jlmakiola/calendula/issues
+Donate: https://ko-fi.com/jeanlucmakiola

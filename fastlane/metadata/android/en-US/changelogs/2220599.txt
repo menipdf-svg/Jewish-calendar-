@@ -1,0 +1,2 @@
+Fixed
+• Reopening the app the next morning shows the right day. The month view used to mark yesterday as today and keep the day you picked the evening before selected. All views now move on to the new day.

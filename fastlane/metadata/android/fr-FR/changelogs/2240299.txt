@@ -1,0 +1,6 @@
+Corrections
+• Les événements déplacés rapidement à la suite ne sont plus perdus : les déplacements sont enregistrés dans l’ordre.
+• Un message indique quand un déplacement n’a pas pu être enregistré.
+
+Modifications
+• Le titre de la vue jour affiche le mois.

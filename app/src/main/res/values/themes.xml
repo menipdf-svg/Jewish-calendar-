@@ -1,0 +1,16 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- AppCompat (DayNight) parent so MainActivity can be an AppCompatActivity,
+         which is required for AppCompatDelegate.setApplicationLocales (the in-app
+         language picker) to sync to the system. Actual colours are driven by the
+         Compose theme; this is essentially the launch/backdrop theme. -->
+    <style name="Theme.Calendula" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- Widget config: drawn over the wallpaper, so the preview shows the real home screen. -->
+    <style name="Theme.Calendula.WidgetConfig">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowShowWallpaper">true</item>
+    </style>
+</resources>

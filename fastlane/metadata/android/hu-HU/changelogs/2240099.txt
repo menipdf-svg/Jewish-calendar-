@@ -1,0 +1,13 @@
+Újdonságok
+• Hét új widget, köztük gyors hozzáadás, heti sáv, visszaszámláló és hónap nappal.
+• Minden widgetnek saját beállításai vannak: háttér, téma és naptárak.
+• Új megjelenés a napirend és a havi widgetnek.
+• Az egész napos események áthúzhatók másik napra vagy a rácsba.
+• A lemondott és a feltételes események jelölve vannak.
+• A kezdési időpontok elrejthetők a havi nézetben.
+
+Javítva
+• A késő esti rövid események teljesen láthatók.
+
+Változások
+• Eseményenként egy értesítés.

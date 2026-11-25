@@ -1,0 +1,12 @@
+Novinky
+• Klasický štýl widgetu agendy.
+• Posuvník priehľadnosti pozadia widgetov.
+
+Opravené
+• Čísla týždňov boli o jedno nižšie, keď týždeň začína nedeľou.
+• Widget mesiaca zobrazí udalosti v akejkoľvek výške.
+• Stlmené udalosti v tmavých widgetoch sú opäť čitateľné.
+• Widgety so svetlým alebo tmavým motívom zodpovedajú farbám systému.
+
+Zmenené
+• Menej povolení.

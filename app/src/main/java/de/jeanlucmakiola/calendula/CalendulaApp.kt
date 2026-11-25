@@ -1,0 +1,136 @@
+package de.jeanlucmakiola.calendula
+
+import android.app.Application
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.android.HiltAndroidApp
+import de.jeanlucmakiola.calendula.data.backup.BackupScheduler
+import de.jeanlucmakiola.calendula.data.calendar.CalendarVisibilityReconciler
+import de.jeanlucmakiola.calendula.data.backup.BackupWorker
+import de.jeanlucmakiola.calendula.data.contacts.SpecialDatesScheduler
+import de.jeanlucmakiola.calendula.data.contacts.SpecialDatesSyncWorker
+import de.jeanlucmakiola.calendula.data.reminders.ReminderMaintenanceScheduler
+import de.jeanlucmakiola.calendula.data.reminders.ReminderMaintenanceWorker
+import de.jeanlucmakiola.calendula.widget.publishCalendulaWidgetPreviews
+import de.jeanlucmakiola.calendula.widget.syncWidgetRollover
+import de.jeanlucmakiola.calendula.widget.widgetEntryPoint
+import de.jeanlucmakiola.floret.crash.CrashConfig
+import de.jeanlucmakiola.floret.crash.CrashReporter
+import de.jeanlucmakiola.floret.locale.AppLanguage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+/**
+ * Application entry point. Registered as android:name=".CalendulaApp"
+ * in AndroidManifest.xml. Hilt initializes its component graph here.
+ */
+@HiltAndroidApp
+class CalendulaApp : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Install first thing so startup crashes are captured too (privacy-
+        // respecting, on-device; the user submits the report by hand). The
+        // capture/loop-detection/report machinery lives in floret-kit's
+        // core-crash; only the app label + issue-tracker URLs are app-specific.
+        // The prefilled issue's own title and body are the kit's, in English:
+        // they are posted to the tracker, so they don't follow the device
+        // language the way the dialog around them does.
+        CrashReporter.install(
+            this,
+            CrashConfig(
+                appLabel = getString(R.string.app_name),
+                newIssueUrl = getString(R.string.report_issue_url),
+                chooseIssueUrl = getString(R.string.report_issue_choose_url),
+            ),
+        )
+        // Below API 33 only AppCompat activities get the app language; a process
+        // woken for a widget formats in it too (#90).
+        AppLanguage.applyDefault(this)
+        // Before anything that writes, so the widgets see every change (#420).
+        widgetEntryPoint().widgetRefreshCoordinator().start()
+        reconcileAutoBackup()
+        reconcileSpecialDates()
+        reconcileCalendarVisibility()
+        startReminderDelivery()
+        reconcileWidgetRollover()
+    }
+
+    /**
+     * Re-arm the widgets' midnight rollover from whatever is actually placed
+     * (#228). Idempotent, and it covers what no broadcast reaches — an alarm
+     * dropped by a force-stop is armed again the next time the app is opened.
+     * Off the main thread: a handful of binder calls on every process start.
+     * The picker previews are republished here too, once per update.
+     */
+    private fun reconcileWidgetRollover() {
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            syncWidgetRollover(this@CalendulaApp)
+            publishCalendulaWidgetPreviews(this@CalendulaApp)
+        }
+    }
+
+    /**
+     * Bring reminder delivery up with the process (#75): a scan re-arms whatever
+     * the system dropped and posts what a missed alarm still owes, then the
+     * provider watch keeps edits re-planned. The daily worker is the backstop.
+     */
+    private fun startReminderDelivery() {
+        val deps = EntryPointAccessors.fromApplication(
+            this, ReminderMaintenanceWorker.Deps::class.java,
+        )
+        val scanner = deps.reminderScanner()
+        scanner.startWatchingProvider()
+        scanner.scanInBackground()
+        ReminderMaintenanceScheduler.apply(this)
+    }
+
+    /**
+     * Flush any calendar switch-off not yet written to `Calendars.VISIBLE`,
+     * including the set inherited from the retired app-local model (#75). A
+     * no-op in the steady state; `RootScreen` re-runs it after a later grant.
+     */
+    private fun reconcileCalendarVisibility() {
+        val deps = EntryPointAccessors.fromApplication(
+            this, CalendarVisibilityReconciler.Deps::class.java,
+        )
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            deps.calendarVisibilityReconciler().run()
+        }
+    }
+
+    /**
+     * Bring the scheduled auto-backup work back in line with the saved settings
+     * on every launch — re-arms it after a reinstall and, crucially, cancels any
+     * orphaned work once backup has been turned off.
+     */
+    private fun reconcileAutoBackup() {
+        val deps = EntryPointAccessors.fromApplication(this, BackupWorker.Deps::class.java)
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            val prefs = deps.settingsPrefs()
+            BackupScheduler.apply(
+                context = this@CalendulaApp,
+                enabled = prefs.autoBackupEnabled.first(),
+                intervalMinutes = prefs.autoBackupIntervalMinutes.first(),
+                hasFolder = prefs.autoBackupFolderUri.first() != null,
+            )
+        }
+    }
+
+    /**
+     * Re-arm (or cancel) the daily special-dates reconcile from the saved
+     * settings, like [reconcileAutoBackup]. The on-open refresh is RootScreen's
+     * ON_RESUME trigger, so no immediate run is needed here.
+     */
+    private fun reconcileSpecialDates() {
+        val deps = EntryPointAccessors.fromApplication(this, SpecialDatesSyncWorker.Deps::class.java)
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            SpecialDatesScheduler.apply(
+                context = this@CalendulaApp,
+                enabled = deps.settingsPrefs().specialDatesEnabled.first(),
+            )
+        }
+    }
+}

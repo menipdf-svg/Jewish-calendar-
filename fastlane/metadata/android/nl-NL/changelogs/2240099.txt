@@ -1,0 +1,13 @@
+Nieuw
+• Zeven nieuwe widgets, waaronder snel toevoegen, weekstrook, aftellen en maand met dag.
+• Elke widget heeft eigen instellingen: achtergrond, thema en agenda’s.
+• Nieuw uiterlijk voor de agenda- en maandwidget.
+• Sleep hele-dag-afspraken naar een andere dag of in het raster.
+• Geannuleerde en voorlopige afspraken worden gemarkeerd.
+• Begintijden in de maandweergave te verbergen.
+
+Opgelost
+• Korte afspraken laat op de avond volledig zichtbaar.
+
+Gewijzigd
+• Eén melding per afspraak.

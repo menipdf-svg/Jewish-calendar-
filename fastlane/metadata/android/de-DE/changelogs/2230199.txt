@@ -1,0 +1,3 @@
+Behoben
+• Die geteilte Monatsansicht zeigt mehr Termine: Ein gewählter Tag zeigt sein Datum nur noch einmal, im Filter-Chip, und die Tageskopfzeilen brauchen weniger Platz.
+• Die Termin-Punkte im geteilten Raster rutschen an Tagen mit „+N“ nicht mehr nach unten.

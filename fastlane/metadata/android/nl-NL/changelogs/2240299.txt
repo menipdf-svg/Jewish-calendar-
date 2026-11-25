@@ -1,0 +1,6 @@
+Opgelost
+• Snel na elkaar verplaatste afspraken gaan niet meer verloren: verplaatsingen worden op volgorde opgeslagen.
+• Een melding laat weten wanneer een verplaatsing niet kon worden opgeslagen.
+
+Gewijzigd
+• De titel van de dagweergave toont de maand.

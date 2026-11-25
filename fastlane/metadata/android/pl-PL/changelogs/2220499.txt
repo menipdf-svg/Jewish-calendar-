@@ -1,0 +1,3 @@
+Poprawki
+• Edytowane, przeniesione i usunięte wydarzenia od razu pokazują się poprawnie na każdym telefonie. Na niektórych, m.in. Samsungach, zmienione wydarzenie nie zmieniało się aż do ponownego uruchomienia aplikacji.
+• Widżety na ekranie głównym wczytują tylko wydarzenia, które pokazują. To powinno pomóc widżetom, które na wolniejszych telefonach zostawały na „wczytywanie”.

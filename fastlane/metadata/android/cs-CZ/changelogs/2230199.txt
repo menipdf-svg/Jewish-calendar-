@@ -1,0 +1,3 @@
+Opraveno
+• Rozdělený měsíční pohled pojme více událostí: vybraný den ukazuje datum jen jednou, v čipu filtru, a záhlaví dnů zabírají méně místa.
+• Tečky událostí v rozdělené mřížce už ve dnech s „+N“ nesjíždějí dolů.

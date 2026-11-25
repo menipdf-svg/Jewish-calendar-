@@ -1,0 +1,3 @@
+Corrigido
+• Eventos editados, movidos ou excluídos aparecem atualizados na hora em qualquer celular. Em alguns aparelhos, incluindo Samsung, um evento alterado só mudava depois de reiniciar o app.
+• Os widgets da tela inicial carregam apenas os eventos que mostram. Isso deve ajudar widgets que ficavam em "carregando" em celulares mais lentos.

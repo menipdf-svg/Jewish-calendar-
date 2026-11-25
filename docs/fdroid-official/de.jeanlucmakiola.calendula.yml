@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# DRAFT fdroiddata metadata for the OFFICIAL F-Droid repository.
+#
+# This is NOT the self-hosted metadata (that lives in ../../fdroid-metadata/).
+# When submitting, this file's contents go to fdroiddata on GitLab as
+#   metadata/de.jeanlucmakiola.calendula.yml
+# See README.md in this folder for the verification status and submission steps.
+#
+# Publishing model: REPRODUCIBLE BUILD + developer-signed binary.
+# F-Droid builds from source on its buildserver, then verifies the result is
+# identical to our own signed APK (fetched via `Binaries`). If it matches,
+# F-Droid publishes OUR binary signed with OUR key (`AllowedAPKSigningKeys`),
+# so the official and self-hosted channels carry the SAME signature and users
+# migrate between them with no reinstall / no data loss.
+# ---------------------------------------------------------------------------
+
+Categories:
+  - Calendar & Agenda
+License: MIT
+AuthorName: Jean-Luc Makiola
+SourceCode: https://codeberg.org/jlmakiola/calendula
+IssueTracker: https://codeberg.org/jlmakiola/calendula/issues
+Changelog: https://codeberg.org/jlmakiola/calendula/src/branch/main/CHANGELOG.md
+Donate: https://ko-fi.com/jeanlucmakiola
+
+AutoName: Calendula
+
+RepoType: git
+Repo: https://gitea.jeanlucmakiola.de/makiolaj/calendula.git
+
+# First build entry = v2.7.5, the first release that clears ALL three F-Droid
+# blockers: (1) AGP VCS-info disabled (`vcsInfo { include = false }`, since
+# v2.7.3); (2) the unused Gradle foojay toolchain-resolver plugin removed (since
+# v2.7.4) — the offline build scanner rejects it as it can fetch a JDK; (3) AGP's
+# dependency-metadata block no longer embedded (`dependenciesInfo { includeInApk
+# = false }`) — the binary scanner rejects it as an "extra signing block". All
+# three live outside the zip entries or are inert, so v2.7.5 is functionally
+# identical to v2.7.3 and reproduces byte-for-byte from source. v2.7.4 and
+# earlier trip one of these checks — do not target them. Subsequent versions are
+# added automatically (AutoUpdateMode).
+Builds:
+  - versionName: 2.7.5
+    versionCode: 20705
+    commit: v2.7.5
+    subdir: app
+    submodules: true
+    gradle:
+      - yes
+    # No NDK / no flavors. The release buildType applies a signingConfig only
+    # when key.properties exists; on the buildserver it does not, so this
+    # produces the unsigned APK F-Droid compares against our binary.
+    #
+    # submodules: true — REQUIRED from v2.11.0 onward, where the build pulls
+    # shared code from the `floret-kit` git submodule via a Gradle composite
+    # build (`includeBuild("floret-kit")`). Without it F-Droid checks out an
+    # empty floret-kit/ and the from-source build fails, stalling publishing.
+    # Inert for v2.7.5 (no submodule yet); kept here so AutoUpdateMode copies it
+    # onto every auto-generated future build entry. The kit is plain-Kotlin and
+    # carries no foojay toolchain resolver, so it clears the same reproducibility
+    # bar (enforced by scripts/check_reproducible_release.sh).
+
+# SHA-256 of our app signing certificate (public; embedded in every published
+# APK). Locks F-Droid to publish only binaries signed with our key.
+AllowedAPKSigningKeys: 5cdaee8eb31cb0df9157c646ae3ec8b3dc43b5bb72624e088c9ddea0c4eb5ec1
+
+# Our own developer-signed APK for reproducible-build verification. %v -> the
+# versionName, so v2.7.5 resolves to calendula_v2.7.5.apk on the self-hosted repo.
+Binaries: https://apps.dev.jeanlucmakiola.de/dev/fdroid/repo/calendula_v%v.apk
+
+# After this one-time submission F-Droid auto-tracks new vX.Y.Z tags and creates
+# build entries itself — no manual recipe edits per release. The tag regex keeps
+# it to release tags only.
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 2.7.5
+CurrentVersionCode: 20705

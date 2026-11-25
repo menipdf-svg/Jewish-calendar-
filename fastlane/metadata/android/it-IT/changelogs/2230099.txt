@@ -1,0 +1,11 @@
+Novità
+• Tieni premuto un evento per selezionarlo, spostarlo o ridimensionarlo, o uno spazio libero per crearne uno.
+• Tocca un numero di telefono per chiamarlo.
+• Le descrizioni HTML appaiono formattate.
+• Scorri indietro ai giorni precedenti nell’agenda.
+• Crea eventi da testo condiviso o selezionato.
+• Tema nero per schermi AMOLED.
+
+Corretto
+• Gli eventi nei giorni del cambio d’ora appaiono all’orario corretto.
+• Un evento ricorrente spostato mantiene le occorrenze eliminate e modificate.

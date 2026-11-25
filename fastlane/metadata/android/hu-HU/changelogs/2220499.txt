@@ -1,0 +1,3 @@
+Javítva
+• A szerkesztett, áthelyezett és törölt események most minden telefonon azonnal megjelennek. Egyes készülékeken, köztük a Samsungokon, a módosított esemény az alkalmazás újraindításáig változatlan maradt.
+• A kezdőképernyő-widgetek csak a megjelenített eseményeket töltik be. Ez segíthet azokon a widgeteken, amelyek lassabb telefonokon a „betöltés” állapotban ragadtak.

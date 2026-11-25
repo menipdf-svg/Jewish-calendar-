@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colours for the static widget-picker previews (Android 14 and below; 15+
+     shows the generated preview). Base = brand light fallback (API < 31).
+     values-v31 maps them to the Material You dynamic palette so the preview
+     matches the live Glance widget; -night holds the dark variants. -->
+<resources>
+    <color name="widget_preview_surface">#D6E4F0</color>
+    <color name="widget_preview_cell">#EEF3F8</color>
+    <color name="widget_preview_outside_shade">#1C000000</color>
+    <color name="widget_preview_on_surface">#191C1F</color>
+    <color name="widget_preview_variant">#6E7479</color>
+    <color name="widget_preview_primary">#3B5364</color>
+    <color name="widget_preview_on_primary">#FFFFFF</color>
+    <color name="widget_preview_event_blue">#039BE5</color>
+    <color name="widget_preview_event_green">#33B679</color>
+    <color name="widget_preview_event_purple">#8E24AA</color>
+    <color name="widget_preview_event_orange">#F4511E</color>
+    <color name="widget_preview_event_red">#D50000</color>
+    <color name="widget_preview_on_event_light">#000000</color>
+    <color name="widget_preview_on_event_dark">#FFFFFF</color>
+</resources>

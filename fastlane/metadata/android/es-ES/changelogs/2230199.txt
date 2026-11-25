@@ -1,0 +1,3 @@
+Corregido
+• La vista mensual dividida muestra más eventos: el día seleccionado muestra su fecha una sola vez, en el chip del filtro, y las cabeceras de día ocupan menos espacio.
+• Los puntos de eventos de la cuadrícula dividida ya no bajan en los días con «+N».

@@ -1,0 +1,3 @@
+Corrigé
+• La vue mensuelle partagée affiche plus d’événements : le jour sélectionné n’affiche plus sa date qu’une fois, dans la puce de filtre, et les en-têtes de jour prennent moins de place.
+• Les points d’événements de la grille partagée ne descendent plus les jours affichant « +N ».

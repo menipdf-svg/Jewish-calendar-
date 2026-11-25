@@ -1,0 +1,2 @@
+Javítva
+• Ha másnap reggel megnyitod az alkalmazást, a helyes napot mutatja. A havi nézet eddig a tegnapot jelölte mai napként, és kijelölve hagyta az előző este választott napot. Most minden nézet átvált az új napra.

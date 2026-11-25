@@ -1,0 +1,5 @@
+Nowości
+• Tłumaczenie galicyjskie, kompletne od początku. Dziękujemy Jani Buni.
+
+Zmiany
+• Arabski, włoski i hiszpański są teraz w pełni przetłumaczone, zaktualizowano też białoruski, niemiecki i słowacki.

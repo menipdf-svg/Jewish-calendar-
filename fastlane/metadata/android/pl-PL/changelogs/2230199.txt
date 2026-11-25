@@ -1,0 +1,3 @@
+Poprawki
+• Podzielony widok miesiąca mieści więcej wydarzeń: wybrany dzień pokazuje datę tylko raz, w chipie filtra, a nagłówki dni zajmują mniej miejsca.
+• Kropki wydarzeń w podzielonej siatce nie zjeżdżają już w dół w dniach z „+N”.

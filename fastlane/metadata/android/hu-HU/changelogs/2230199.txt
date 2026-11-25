@@ -1,0 +1,3 @@
+Javítva
+• A megosztott havi nézet több eseményt mutat: a kiválasztott nap dátuma csak egyszer, a szűrőchipben jelenik meg, és a napfejlécek kevesebb helyet foglalnak.
+• A megosztott rács eseménypöttyei már nem csúsznak lejjebb a „+N” jelzésű napokon.

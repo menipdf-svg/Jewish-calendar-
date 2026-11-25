@@ -1,0 +1,13 @@
+Novedades
+• Siete widgets nuevos, como añadir rápido, franja semanal, cuenta atrás y mes con día.
+• Ajustes por widget: fondo, tema y calendarios.
+• Nuevo aspecto de los widgets de agenda y mes.
+• Arrastra eventos de día completo a otro día o a la cuadrícula.
+• Eventos cancelados y provisionales marcados.
+• Horas de inicio ocultables en la vista de mes.
+
+Correcciones
+• Los eventos cortos a última hora se ven completos.
+
+Cambios
+• Una sola notificación por evento.

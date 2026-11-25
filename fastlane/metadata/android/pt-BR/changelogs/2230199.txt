@@ -1,0 +1,3 @@
+Corrigido
+• A visualização mensal dividida mostra mais eventos: o dia selecionado mostra a data só uma vez, no chip do filtro, e os cabeçalhos dos dias ocupam menos espaço.
+• Os pontos de eventos na grade dividida não descem mais nos dias com “+N”.

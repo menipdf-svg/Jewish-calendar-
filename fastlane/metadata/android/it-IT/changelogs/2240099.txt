@@ -1,0 +1,13 @@
+Novità
+• Sette nuovi widget, tra cui aggiunta rapida, settimana, conto alla rovescia e mese con giorno.
+• Impostazioni per widget: sfondo, tema, calendari.
+• Nuovo aspetto dei widget agenda e mese.
+• Trascina gli eventi di tutto il giorno su un altro giorno o nella griglia.
+• Eventi annullati e provvisori contrassegnati.
+• Orari di inizio nascondibili nella vista mese.
+
+Correzioni
+• Gli eventi brevi a tarda sera sono interamente visibili.
+
+Modifiche
+• Una sola notifica per evento.

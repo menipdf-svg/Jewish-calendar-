@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock shown in the widget picker on Android 14 and below
+     (android:previewLayout); 15+ shows the generated preview instead. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/preview_widget_bg"
+    android:padding="6dp">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:src="@drawable/floret_widget_shape_sunny"
+        android:tint="@color/widget_preview_primary"
+        tools:ignore="UseAppTint" />
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_widget_add"
+        android:tint="@color/widget_preview_on_primary"
+        tools:ignore="UseAppTint" />
+</FrameLayout>

@@ -1,0 +1,6 @@
+Correções
+• Eventos movidos rapidamente um após o outro não se perdem mais: as mudanças são salvas em ordem.
+• Uma mensagem avisa quando uma mudança não pôde ser salva.
+
+Alterações
+• O título da visualização diária mostra o mês.

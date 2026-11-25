@@ -1,0 +1,3 @@
+Behoben
+• Bearbeitete, verschobene und gelöschte Termine erscheinen jetzt auf jedem Handy sofort richtig. Auf manchen Geräten, darunter Samsung, blieb ein geänderter Termin unverändert, bis die App neu gestartet wurde.
+• Die Widgets auf dem Startbildschirm laden nur noch die Termine, die sie anzeigen. Das sollte Widgets helfen, die auf langsameren Handys bei „Wird geladen“ hängen blieben.

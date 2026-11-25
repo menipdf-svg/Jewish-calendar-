@@ -1,0 +1,12 @@
+Neu
+• Klassischer Stil für das Terminliste-Widget.
+• Deckkraft-Regler für Widget-Hintergründe.
+
+Behoben
+• Kalenderwochen waren bei Wochenstart Sonntag eine zu niedrig.
+• Monats-Widget zeigt Termine in jeder Höhe.
+• Abgedunkelte Termine in dunklen Widgets wieder lesbar.
+• Widgets mit Hell oder Dunkel passen zu den Systemfarben.
+
+Geändert
+• Weniger Berechtigungen.

@@ -1,0 +1,12 @@
+New
+• Classic style for the agenda widget.
+• Opacity slider for widget backgrounds.
+
+Fixed
+• Week numbers were one too low when weeks start on Sunday.
+• The month widget shows events at every height.
+• Dimmed events in dark widgets are readable again.
+• Widgets set to Light or Dark match the system colours.
+
+Changed
+• Fewer permissions.

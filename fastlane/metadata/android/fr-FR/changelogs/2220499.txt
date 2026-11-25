@@ -1,0 +1,3 @@
+Corrigé
+• Les événements modifiés, déplacés ou supprimés s'affichent tout de suite sur tous les téléphones. Sur certains, dont les Samsung, un événement modifié ne changeait qu'après un redémarrage de l'app.
+• Les widgets de l'écran d'accueil ne chargent plus que les événements qu'ils affichent, ce qui devrait aider ceux qui restaient bloqués sur « chargement » sur les téléphones lents.

@@ -1,0 +1,11 @@
+Calendula is an open-source calendar app for Android. It works directly on the system calendar provider, so anything synced to your device (Nextcloud via DAVx5, Google, local calendars, WebCal subscriptions) shows up in Calendula, and changes you make sync back the same way.
+
+It has month, week, day and agenda views. You can create, edit and delete events, including recurring ones, and set repeats from presets or your own rules. When you change a recurring event, you choose whether the change applies to that one event, to it and all following ones, or to the whole series.
+
+Calendula shows your event reminders as notifications. Tap one to open the event.
+
+If you turn it on, Calendula also shows your contacts' birthdays, anniversaries and other dates. Contacts are read on your device and are never uploaded or changed. Calendula copies the dates into local calendars that you control.
+
+The design is Material 3 Expressive throughout, with dynamic color and expressive motion and shapes.
+
+Calendula has no telemetry, no analytics and no network access. Your data never leaves the device.

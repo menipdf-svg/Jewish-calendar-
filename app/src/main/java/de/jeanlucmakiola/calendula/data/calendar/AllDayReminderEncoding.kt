@@ -1,0 +1,126 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import de.jeanlucmakiola.calendula.domain.reminders.allDayLeadDays
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+
+/**
+ * Translates an all-day reminder between the **semantic** lead time the UI
+ * speaks (whole days before the event — "1 day before") and the **raw**
+ * `CalendarContract.Reminders.MINUTES` offset the provider stores.
+ *
+ * Calendula schedules no alarms itself: the provider fires a reminder at
+ * `DTSTART − MINUTES` (the Etar model). An all-day event's DTSTART is **UTC
+ * midnight** (see [EventWriteTimes]), so a raw `MINUTES = 1440` ("1 day") lands
+ * on UTC-midnight of the previous day — 02:00 local in CEST, not the morning.
+ *
+ * To fire at a chosen wall-clock time we encode that time *into* the offset:
+ * `MINUTES = UTC-midnight(startDate) − (localInstant of [timeOfDayMinutes] on the
+ * day [semanticMinutes] before)`. The single fixed offset can only be tuned for
+ * the event's own date, so a recurring all-day series or a post-creation
+ * timezone change drifts the fire time by the offset delta (±1h across DST) —
+ * an inherent limit of the provider model, shared by Etar.
+ */
+private const val MINUTES_PER_DAY = 1_440
+private const val MILLIS_PER_MINUTE = 60_000L
+
+/**
+ * Raw provider `MINUTES` for an all-day reminder set [semanticMinutes] before the
+ * event (a whole-day multiple; sub-day remainders are dropped), so it fires at
+ * [timeOfDayMinutes] (minutes from local midnight) in [zone]. The result may be
+ * **negative** — e.g. "at time of event" at 09:00 CEST encodes to −420, meaning
+ * the provider fires *after* DTSTART; this is valid and must not be clamped. The
+ * one negative it never is is [MINUTES_DEFAULT]: the sentinel and the encoding
+ * share a value space, so an encoding that lands on it is nudged one minute past
+ * it rather than being read back as "use the account default". That sentinel is
+ * also the one [semanticMinutes] that passes through unencoded — a lead time may
+ * itself be negative (a foreign row firing the day *after* the event), and
+ * waving those through would change when they fire.
+ */
+internal fun toProviderAllDayMinutes(
+    semanticMinutes: Int,
+    startDate: LocalDate,
+    zone: ZoneId,
+    timeOfDayMinutes: Int,
+): Int {
+    if (semanticMinutes == MINUTES_DEFAULT) return semanticMinutes
+    val utcMidnight = startDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    val fire = startDate.minusDays((semanticMinutes / MINUTES_PER_DAY).toLong())
+        .atTime(LocalTime.of(timeOfDayMinutes / 60, timeOfDayMinutes % 60))
+        .atZone(zone).toInstant().toEpochMilli()
+    val raw = ((utcMidnight - fire) / MILLIS_PER_MINUTE).toInt()
+    return if (raw == MINUTES_DEFAULT) MINUTES_DEFAULT - 1 else raw
+}
+
+/**
+ * The next date on or after [today] carrying [month]/[day] — the date to sample
+ * a yearly all-day reminder's UTC offset at. A managed birthday's DTSTART is an
+ * ancient anchor (1972 for year-less dates), a year whose timezone rules
+ * (pre-DST offsets) differ from today's; sampling the offset there skews every
+ * modern occurrence by hours. Sampling at the upcoming occurrence makes the
+ * stored offset correct for it and its neighbours (only ±1h DST drift remains,
+ * the inherent limit). Feb-29 skips forward to the next leap year.
+ */
+internal fun nextYearlyOccurrence(month: Int, day: Int, today: LocalDate): LocalDate {
+    var year = today.year
+    // A Feb-29 date is valid only every ~4 years; 8 tries always reaches one.
+    repeat(8) {
+        val candidate = runCatching { LocalDate.of(year, month, day) }.getOrNull()
+        if (candidate != null && !candidate.isBefore(today)) return candidate
+        year++
+    }
+    // Unreachable for real month/day inputs; fall back to the raw anchor.
+    return LocalDate.of(today.year, month, day)
+}
+
+/**
+ * The date an **imported** all-day event's reminder offset is sampled at.
+ *
+ * A one-off fires once, on its own date. A series' `DTSTART` is only an anchor
+ * and may be ancient — Fossify writes a year-less contact birthday at 1970, a
+ * year whose rules predate DST across most of Europe, and a real birth year is
+ * usually older still — so sampling there skews every modern occurrence by the
+ * offset delta (the same trap [nextYearlyOccurrence] exists for). A yearly
+ * series is therefore sampled at its next occurrence of the anchor's month/day,
+ * which shares the season; any other series at [today], which its upcoming
+ * occurrences are near.
+ *
+ * The decode side ([fromProviderAllDayMinutes]) only asks which local *day* the
+ * encoded instant falls on, so it still reads the lead time back correctly from
+ * the anchor's own date.
+ */
+internal fun importedAllDayReminderDate(
+    startDate: LocalDate,
+    recurrenceRule: String?,
+    today: LocalDate,
+): LocalDate = when {
+    recurrenceRule.isNullOrBlank() -> startDate
+    recurrenceRule.contains("FREQ=YEARLY", ignoreCase = true) ->
+        nextYearlyOccurrence(startDate.monthValue, startDate.dayOfMonth, today)
+    startDate.isBefore(today) -> today
+    else -> startDate
+}
+
+/**
+ * Recover the semantic whole-day lead time from a raw all-day reminder
+ * [rawMinutes] — the inverse of [toProviderAllDayMinutes], for the form and the
+ * detail screen. Delegates to [allDayLeadDays], so the day displayed is the day
+ * the reminder actually fires on.
+ *
+ * [MINUTES_DEFAULT] passes through unchanged, the mirror of the encode side. A
+ * real encoding is often negative, so only that exact value may be treated as the
+ * sentinel — decoding it would land it on the start date and turn "use the
+ * account default" into a concrete at-start alarm.
+ */
+internal fun fromProviderAllDayMinutes(
+    rawMinutes: Int,
+    startDate: LocalDate,
+    zone: ZoneId,
+    timeOfDayMinutes: Int,
+): Int = if (rawMinutes == MINUTES_DEFAULT) {
+    rawMinutes
+} else {
+    allDayLeadDays(rawMinutes, startDate, zone, timeOfDayMinutes).toInt() * MINUTES_PER_DAY
+}

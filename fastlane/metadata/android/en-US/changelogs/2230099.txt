@@ -1,0 +1,11 @@
+New
+• Long press an event to select, move or resize it, or an empty slot to draft a new one.
+• Tap a phone number in an event to call it.
+• HTML descriptions from Outlook and Google show as formatted text.
+• Scroll back to earlier days in the agenda.
+• Create events from shared or selected text.
+• Black theme for AMOLED screens.
+
+Fixed
+• Events on daylight saving days show at their real time.
+• Moving a recurring event keeps its deleted and edited occurrences.

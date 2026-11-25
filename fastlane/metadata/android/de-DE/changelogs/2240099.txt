@@ -1,0 +1,13 @@
+Neu
+• Sieben neue Widgets, u. a. Schnell hinzufügen, Wochenleiste, Countdown und Monat mit Tag.
+• Jedes Widget hat eigene Einstellungen: Hintergrund, Design und Kalender.
+• Neuer Look für Terminliste- und Monats-Widget.
+• Ganztägige Termine auf einen anderen Tag oder ins Raster ziehen.
+• Abgesagte und vorläufige Termine werden markiert.
+• Startzeiten in der Monatsansicht ausblendbar.
+
+Behoben
+• Kurze Termine spät am Abend voll sichtbar.
+
+Geändert
+• Eine Benachrichtigung pro Termin.

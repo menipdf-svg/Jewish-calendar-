@@ -1,0 +1,12 @@
+Nieuw
+• Klassieke stijl voor de agendawidget.
+• Schuifregelaar voor de dekking van widgetachtergronden.
+
+Opgelost
+• Weeknummers waren één te laag als de week op zondag begint.
+• De maandwidget toont afspraken op elke hoogte.
+• Gedimde afspraken in donkere widgets zijn weer leesbaar.
+• Widgets op Licht of Donker passen bij de systeemkleuren.
+
+Gewijzigd
+• Minder machtigingen.

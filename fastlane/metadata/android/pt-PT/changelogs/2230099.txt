@@ -1,0 +1,11 @@
+Novidades
+• Mantenha premido um evento para selecionar, mover ou alterar a duração, ou um espaço livre para esboçar um novo.
+• Toque num número de telefone para ligar.
+• Descrições HTML aparecem formatadas.
+• Deslize a agenda para trás até dias anteriores.
+• Crie eventos a partir de texto partilhado ou selecionado.
+• Tema preto para ecrãs AMOLED.
+
+Corrigido
+• Eventos em dias de mudança de hora aparecem à hora certa.
+• Mover um evento recorrente mantém as ocorrências eliminadas e editadas.

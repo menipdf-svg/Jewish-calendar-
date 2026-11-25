@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A day outside the month: its cell under the widget's shade (MonthGridViews). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/preview_widget_cell_bg" />
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/widget_preview_outside_shade" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</layer-list>

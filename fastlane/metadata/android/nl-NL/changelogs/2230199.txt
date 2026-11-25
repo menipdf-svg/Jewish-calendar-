@@ -1,0 +1,3 @@
+Opgelost
+• De gesplitste maandweergave toont meer afspraken: een gekozen dag toont zijn datum nog maar één keer, in de filterchip, en de dagkoppen nemen minder ruimte in.
+• De afspraakstippen in het gesplitste raster zakken niet meer weg op dagen met „+N”.

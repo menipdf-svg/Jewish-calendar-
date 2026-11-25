@@ -1,0 +1,147 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import de.jeanlucmakiola.calendula.domain.CalendarSource
+import de.jeanlucmakiola.calendula.domain.EventColorOption
+import de.jeanlucmakiola.calendula.domain.EventDetail
+import de.jeanlucmakiola.calendula.domain.EventForm
+import de.jeanlucmakiola.calendula.domain.EventInstance
+import de.jeanlucmakiola.calendula.domain.SearchCandidate
+import de.jeanlucmakiola.calendula.domain.ics.IcsEvent
+import de.jeanlucmakiola.calendula.domain.ics.IcsImportSummary
+import de.jeanlucmakiola.calendula.domain.ics.ParsedIcsEvent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlin.time.Instant
+
+interface CalendarRepository {
+    fun calendars(): Flow<List<CalendarSource>>
+    fun instances(range: ClosedRange<Instant>): Flow<List<EventInstance>>
+
+    /** One read of event [eventId]'s occurrences overlapping [range], soonest first, whatever calendar it is in. */
+    suspend fun eventOccurrences(eventId: Long, range: ClosedRange<Instant>): List<EventInstance>
+
+    /** Re-query every open [calendars] / [instances] flow. */
+    fun refresh()
+
+    /** Emits on the app's own writes and visibility changes; not on provider notifications or [refresh]. */
+    val localChanges: Flow<Unit>
+
+    suspend fun eventDetail(eventId: Long): EventDetail
+
+    /**
+     * Candidate matches for [query] with hidden calendars removed; empty when
+     * [query] is blank. Searches the whole history/future and leaves matching
+     * and ranking to [de.jeanlucmakiola.calendula.domain.EventSearch].
+     */
+    suspend fun searchEvents(query: String): List<SearchCandidate>
+
+    /**
+     * The event-colour palette a calendar's account publishes; empty when it
+     * exposes none (see [CalendarDataSource.publishedEventColors]).
+     */
+    suspend fun eventColorPalette(calendarId: Long): List<EventColorOption>
+
+    /** Create a device-only (LOCAL) calendar the app owns; returns its id. */
+    suspend fun createLocalCalendar(displayName: String, color: Int, description: String?): Long
+
+    /** Update name, color and description of a local calendar the app owns. */
+    suspend fun updateCalendar(id: Long, displayName: String, color: Int, description: String?)
+
+    /** Permanently delete a local calendar the app owns, with all its events. */
+    suspend fun deleteCalendar(id: Long)
+
+    /**
+     * Show or hide [ids] device-wide (`Calendars.VISIBLE`), which also gates
+     * their reminders — see [CalendarDataSource.setCalendarVisible]. Written one
+     * at a time, in order; a failure part-way leaves the earlier writes standing.
+     *
+     * Without `WRITE_CALENDAR` the choice is kept app-side instead (see
+     * [de.jeanlucmakiola.calendula.data.prefs.CalendarPrefs.pendingDisabledCalendarIds]).
+     */
+    suspend fun setCalendarsVisible(ids: Collection<Long>, visible: Boolean)
+
+    /**
+     * Every event of the writable local calendars, ready to serialise into a
+     * whole-calendar `.ics` backup (see [CalendarDataSource.exportableEvents]).
+     * [calendarIds] narrows the export to a chosen subset; `null` exports all.
+     */
+    suspend fun exportEvents(calendarIds: Set<Long>? = null): List<IcsEvent>
+
+    /**
+     * Bulk-import parsed `.ics` [events] into [targetCalendarId]. Events whose
+     * UID already exists in the target are skipped (idempotent restore); the
+     * rest are inserted. See [CalendarDataSource.insertImportedEvent].
+     */
+    suspend fun importEvents(targetCalendarId: Long, events: List<ParsedIcsEvent>): IcsImportSummary
+
+    /** Create a new event from a validated form; returns the new `Events._ID`. */
+    suspend fun createEvent(form: EventForm): Long
+
+    /**
+     * Update an event (recurring: the whole series) from a validated form.
+     * [original] is the prefilled form, used to write only what changed.
+     */
+    suspend fun updateEvent(eventId: Long, original: EventForm, updated: EventForm)
+
+    /**
+     * Move an event (recurring: the whole series, with its exceptions) to
+     * [targetCalendarId] and apply the [original]→[updated] field edits; returns
+     * the new event's `Events._ID`. Copy+delete under the hood
+     * (see [CalendarDataSource.moveEvent]) — `CALENDAR_ID` can't be updated in
+     * place.
+     */
+    suspend fun moveEvent(
+        eventId: Long,
+        targetCalendarId: Long,
+        original: EventForm,
+        updated: EventForm,
+    ): Long
+
+    /**
+     * Change a single occurrence of a recurring event (exception row with the
+     * form's values); returns the exception's `Events._ID`. [original] is what
+     * the row holds now, for the case where it turns out not to recur.
+     */
+    suspend fun updateOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        form: EventForm,
+    ): Long
+
+    /**
+     * Every series split the app makes ([updateEventFromOccurrence]), so what
+     * follows a series by id can move on to the part that continues it.
+     */
+    val seriesSplits: Flow<SeriesSplit> get() = emptyFlow()
+
+    /**
+     * Change a recurring event from [beginMillis] onwards (series split);
+     * returns the new event's `Events._ID`.
+     */
+    suspend fun updateEventFromOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        updated: EventForm,
+    ): Long
+
+    /** Delete the whole event (for recurring events: the entire series). */
+    suspend fun deleteEvent(eventId: Long)
+
+    /** Cancel a single occurrence of a recurring event at its `Instances.BEGIN` time. */
+    suspend fun deleteOccurrence(eventId: Long, beginMillis: Long)
+
+    /** Delete a recurring event from the occurrence at [beginMillis] onwards. */
+    suspend fun deleteEventFromOccurrence(eventId: Long, beginMillis: Long)
+}
+
+class NoSuchEventException(eventId: Long) :
+    NoSuchElementException("No event with id=$eventId")
+
+/** A ContentResolver write affected no rows or returned no URI. */
+class WriteFailedException(operation: String) :
+    RuntimeException("Calendar write failed: $operation")
+
+/** A "this and following" edit: [oldEventId] now ends where [newEventId] picks up. */
+data class SeriesSplit(val oldEventId: Long, val newEventId: Long)

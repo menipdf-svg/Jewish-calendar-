@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+      Optional and feature-gated: only the "Contact special dates" feature reads
+      contacts, and only after the user enables it and grants this at runtime
+      (never requested at startup). Everything stays offline — birthdays and
+      other contact dates are mirrored one-way into local calendars; contacts
+      are never written and nothing leaves the device (the app has no INTERNET
+      permission). See docs/design/contact-special-dates.md.
+    -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!--
+      Lets the "Reliable delivery" setting open the direct system dialog to
+      exempt Calendula from battery optimisation (so reminder broadcasts aren't
+      delayed by Doze). Used only to launch that dialog; falls back to the
+      battery-optimisation list if the OS declines the direct intent.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!--
+      Re-fire a snoozed reminder at an exact time (the calendar provider won't —
+      its alert is already fired). USE_EXACT_ALARM is auto-granted to calendar
+      apps on API 33+; SCHEDULE_EXACT_ALARM covers API 31–32 (user-revocable,
+      with an inexact fallback if withheld). F-Droid-clean: no Play allowlisting.
+    -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!--
+      A reboot clears every pending alarm, including the one holding the next
+      reminder. Now that the app schedules that alarm itself (#75) rather than
+      leaning on the provider's, it has to hear about the reboot to re-arm it —
+      otherwise reminders simply stop after a restart.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- WorkManager declares these for network constraints and foreground workers, neither of which the app uses (#448). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+
+    <!-- Package visibility (Android 11+): without this, getLaunchIntentForPackage
+         returns null and the calendar manager's per-account "manage" button can't
+         open the source sync app (DAVx5, ICSx5, Google Calendar, …). The LAUNCHER
+         intent makes launchable apps visible so we can launch whichever app owns a
+         calendar account's authenticator. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".CalendulaApp"
+        android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Calendula"
+        tools:targetApi="35">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <!-- The MAIN/LAUNCHER entry (the launcher icon + its label) lives on
+                 the two <activity-alias> below, so the app name can be switched at
+                 runtime (issue #44). MainActivity keeps every other filter. -->
+
+            <!-- Be selectable as the system calendar app. Android has no API for
+                 an app to make itself the default, so registering the filters
+                 launchers and the OS use is what lets the user pick Calendula
+                 from the system chooser when a date action fires (issue #9).
+                 APP_CALENDAR is the "open the calendar app" action; the VIEW
+                 filters below catch a tapped date. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.APP_CALENDAR" />
+            </intent-filter>
+            <!-- A launcher/clock date tap fires ACTION_VIEW on the provider's
+                 time Uri (content://com.android.calendar/time/<epochMillis>);
+                 some surfaces use the time/epoch mime type. We open the day view
+                 on that date (MainActivity.calendarTimeDateOrNull). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:scheme="content"
+                    android:host="com.android.calendar"
+                    android:pathPrefix="/time" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="time/epoch" />
+            </intent-filter>
+
+            <!-- Open a .ics/.vcs file (file manager / email attachment / browser).
+                 The three MIME types cover the common labels the same calendar
+                 data arrives under: iCalendar 2.0 (text/calendar), the older
+                 vCalendar 1.0 / .vcs (text/x-vcalendar), and application/ics some
+                 mail apps emit — Android cross-products the scheme and mimeType
+                 tags, so each MIME is accepted on both schemes (matches Etar). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="text/calendar" />
+                <data android:mimeType="text/x-vcalendar" />
+                <data android:mimeType="application/ics" />
+            </intent-filter>
+            <!-- Same .ics/.vcs data arriving mislabelled as a generic download —
+                 application/octet-stream — the way many mail clients, browsers and
+                 file managers hand off attachments. Matched by file extension, so
+                 this stays a separate filter: a pathPattern here must not narrow
+                 the MIME-typed VIEW filter above (that one has no path and must
+                 keep matching regardless of name). The import handler ignores the
+                 MIME type, so a let-through octet-stream .ics imports normally.
+                 Best-effort: pathPattern is reliable for file:// (and content://
+                 whose path carries the filename); content:// URIs that expose no
+                 name still fall back to the MIME-typed filter above. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.ics" />
+                <data android:pathPattern=".*\\.vcs" />
+            </intent-filter>
+
+            <!-- Receive a .ics/.vcs shared from another app (same MIME set). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/calendar" />
+                <data android:mimeType="text/x-vcalendar" />
+                <data android:mimeType="application/ics" />
+            </intent-filter>
+
+            <!-- Text shared or selected in another app opens a prefilled new
+                 event (MainActivity.sharedTextRequestOrNull, issue #306). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter android:label="@string/process_text_create_event">
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- Let another app or widget (e.g. the Todo Agenda widget) launch us
+                 to create a new event, the way the AOSP calendar accepts it:
+                 ACTION_INSERT on the events *dir* mime type, carrying the new
+                 event's fields as CalendarContract extras
+                 (MainActivity.insertFormOrNull, issue #30). ACTION_EDIT on the
+                 dir mime is AOSP's "edit a new event" — i.e. create — so it maps
+                 to the same prefilled create form. (The far more common *item*-
+                 typed INSERT — the form the Android docs' example and apps like
+                 DB Navigator use — is the item filter below, issue #74.) -->
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/event" />
+            </intent-filter>
+
+            <!-- Create or edit an event another app/assistant/widget points at,
+                 addressed by the provider's *item* MIME type. Three actions share
+                 this filter, told apart at runtime by the intent's data:
+
+                 • ACTION_INSERT — create. This is the form the Android docs'
+                   "insert an event" example and many apps use
+                   (setType("vnd.android.cursor.item/event")), e.g. DB Navigator's
+                   "Save to calendar". The dir-typed filter above alone missed it,
+                   so Calendula never showed in the chooser — and, when it was the
+                   only calendar app, the intent resolved to nothing (issue #74).
+                 • ACTION_INSERT_OR_EDIT — the third "add to calendar" action AOSP
+                   and Google Calendar register; a create, or an edit when it
+                   carries an event id.
+                 • ACTION_EDIT — edit the existing event at
+                   content://com.android.calendar/events/<id> (an id-less EDIT is a
+                   create). Opens the occurrence in the edit form, not the
+                   read-only detail — that's the VIEW filter above.
+
+                 Create fields ride as CalendarContract extras; an edit's
+                 occurrence times ride as EXTRA_EVENT_BEGIN_TIME /
+                 EXTRA_EVENT_END_TIME when supplied (MainActivity.insertFormOrNull
+                 / editEventKeyOrNull). -->
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <action android:name="android.intent.action.INSERT_OR_EDIT" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/event" />
+            </intent-filter>
+
+            <!-- Open an existing event another app/widget points at (e.g. tapping
+                 an event in the Todo Agenda widget): ACTION_VIEW on
+                 content://com.android.calendar/events/<id>, the way AOSP fires it.
+                 Matched by the provider's item MIME type, not the path — a
+                 content: VIEW intent carries the resolved type
+                 (vnd.android.cursor.item/event) and a path-only filter wouldn't
+                 match it. The occurrence's times ride as EXTRA_EVENT_BEGIN_TIME /
+                 EXTRA_EVENT_END_TIME when the launcher supplies them
+                 (MainActivity.viewEventKeyOrNull, issue #48). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="vnd.android.cursor.item/event" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- Launcher entry for MainActivity, split into two aliases so the app's
+             launcher name can be switched at runtime between "Calendula" and
+             "Calendar" (issue #44). Exactly one is enabled at a time; the app
+             flips them via PackageManager.setComponentEnabledSetting
+             (LauncherNameManager). The shortcuts meta-data lives here, not on
+             MainActivity, because static shortcuts are published by whichever
+             component owns the MAIN/LAUNCHER filter. -->
+        <activity-alias
+            android:name=".DefaultNameAlias"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".CalendarNameAlias"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name_calendar_alias"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- Standalone surface for a captured crash report. MainActivity routes
+             here on a startup crash-loop, so it stays clear of the app's Hilt
+             graph and Compose content. Not exported: launched only by us. -->
+        <activity
+            android:name=".ui.crash.CrashReportActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
+
+        <!-- Quick Settings tile: a one-tap "New event" shortcut in the QS panel.
+             Exported with BIND_QUICK_SETTINGS_TILE so only the system QS host can
+             bind it; the action mirrors the launcher "New event" shortcut. -->
+        <service
+            android:name=".qs.NewEventTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_new_event"
+            android:label="@string/qs_tile_new_event_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Reminder delivery is the app's own (#75): it plans the alarms from
+             Instances + Reminders instead of waiting for the provider's
+             EVENT_REMINDER broadcast, which OEM-modified providers demonstrably
+             retarget or never send. This receiver takes our scan alarm plus
+             every outside event that invalidates it — boot and package-replace
+             wipe pending alarms, and a clock or timezone change moves every
+             reminder relative to the one that is armed.
+             Exported: the system broadcasts arrive from outside the app. -->
+        <receiver
+            android:name=".data.reminders.ReminderScheduleReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Snooze / dismiss actions on a reminder notification, plus the snooze
+             re-show alarm. Not exported: only our own notification buttons and
+             AlarmManager PendingIntents target it. -->
+        <receiver
+            android:name=".data.reminders.ReminderActionReceiver"
+            android:exported="false" />
+
+        <!-- Home-screen widgets (Glance). Exported: the launcher/host binds them. -->
+        <activity
+            android:name=".widget.config.WidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Calendula.WidgetConfig">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <receiver
+            android:name=".widget.agenda.AgendaWidgetReceiver"
+            android:label="@string/widget_agenda_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_agenda" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.month.MonthWidgetReceiver"
+            android:label="@string/widget_month_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_month" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.quickadd.QuickAddWidgetReceiver"
+            android:label="@string/widget_quick_add_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_quick_add" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.date.DateWidgetReceiver"
+            android:label="@string/widget_date_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_date" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.week.WeekStripWidgetReceiver"
+            android:label="@string/widget_week_strip_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_week_strip" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.upcoming.UpcomingWidgetReceiver"
+            android:label="@string/widget_upcoming_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_upcoming" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.today.TodayWidgetReceiver"
+            android:label="@string/widget_today_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_today" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.countdown.CountdownWidgetReceiver"
+            android:label="@string/widget_countdown_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_countdown" />
+        </receiver>
+
+        <!-- A countdown widget's redraw for when its label changes (#439). -->
+        <receiver
+            android:name=".widget.WidgetTickReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".widget.split.MonthDayWidgetReceiver"
+            android:label="@string/widget_month_day_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_month_day" />
+        </receiver>
+
+        <!-- Keeps both widgets fresh: the calendar provider broadcasts
+             PROVIDER_CHANGED on any data change (external sync; the app's own
+             writes redraw directly). The day boundary arrives as the app's own
+             ROLLOVER alarm (#228), by explicit PendingIntent, so it needs no
+             filter here; DATE_CHANGED is a free extra only, since Android 8+
+             withholds it from manifest receivers. TIME_SET / TIMEZONE_CHANGED
+             move the boundary, boot / package-replace wipe the alarm, and
+             LOCALE_CHANGED redraws the labels in the new language.
+             Exported: the system broadcasts arrive from outside the app. -->
+        <!-- The app's own redraw request (language change); not exported so
+             other apps can't trigger it. -->
+        <receiver
+            android:name=".widget.WidgetRedrawReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".widget.WidgetUpdateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROVIDER_CHANGED" />
+                <data
+                    android:host="com.android.calendar"
+                    android:scheme="content" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Hands .ics files we stage in the cache to other apps via a content
+             Uri (single-event share). Authority tracks applicationId so the
+             debug suffix doesn't break getUriForFile. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Persists the per-app language (M4) on API < 33, where the platform
+             per-app-languages API is unavailable. On 33+ this is a no-op. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+    </application>
+
+</manifest>

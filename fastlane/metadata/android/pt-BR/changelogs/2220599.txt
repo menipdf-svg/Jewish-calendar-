@@ -1,0 +1,2 @@
+Corrigido
+• Ao abrir o app na manhã seguinte, aparece o dia certo. A visualização do mês marcava ontem como hoje e deixava selecionado o dia escolhido na noite anterior. Agora todas as visualizações passam para o novo dia.

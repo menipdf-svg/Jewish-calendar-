@@ -1,0 +1,87 @@
+package de.jeanlucmakiola.calendula.ui.week
+
+import de.jeanlucmakiola.calendula.ui.common.startOfWeek
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import de.jeanlucmakiola.calendula.ui.common.rememberTimelineDragController
+import de.jeanlucmakiola.calendula.ui.common.sampleTimelineEvents
+import de.jeanlucmakiola.floret.components.ScaledViewPreview
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.coroutines.flow.first
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+
+/**
+ * A live, scaled-down Week view for the onboarding view chooser. The week and
+ * today's column are real; only the events are stand-ins.
+ *
+ * The timeline is scrolled to the working day rather than to midnight — the
+ * live view centres on noon once it knows its own scroll range, which a preview
+ * that is never interacted with would otherwise never do.
+ */
+@Composable
+internal fun WeekViewPreview(
+    weekStart: DayOfWeek,
+    height: Dp,
+    modifier: Modifier = Modifier,
+    dayCount: Int = 7,
+) {
+    val zone = remember { TimeZone.currentSystemDefault() }
+    val today = remember(zone) { Clock.System.now().toLocalDateTime(zone).date }
+    val state = remember(today, weekStart, dayCount, zone) {
+        sampleWeekState(today, weekStart, dayCount, zone)
+    }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(Unit) {
+        snapshotFlow { scrollState.maxValue }.first { it > 0 }
+        // Half the scroll range is noon — the same centring the live view does.
+        scrollState.scrollTo(scrollState.maxValue / 2)
+    }
+
+    ScaledViewPreview(height = height, modifier = modifier) {
+        WeekSuccess(
+            state = state,
+            showWeekNumber = dayCount == 7,
+            headerBias = if (dayCount == 1) TimelineKind.Day.headerBias else 0f,
+            allDayHeight = state.allDayStripHeight(),
+            actions = rememberTimelineActions(
+                scrollState = scrollState,
+                dragController = rememberTimelineDragController(),
+                onEventClick = {},
+                onOpenDay = {},
+                onCreateAt = { _, _ -> },
+                onDrop = {},
+                onResize = {},
+                onStripDrop = {},
+            ),
+        )
+    }
+}
+
+/** Sample week state, laid out through the same helpers the live view uses. */
+private fun sampleWeekState(
+    today: LocalDate,
+    weekStart: DayOfWeek,
+    dayCount: Int,
+    zone: TimeZone,
+): WeekUiState.Success {
+    val start = if (dayCount == 7) today.startOfWeek(weekStart) else today
+    val days = (0 until dayCount).map { start.plus(it, DateTimeUnit.DAY) }
+    val (allDay, timed) = sampleTimelineEvents(days, today, zone).splitWholeDays(zone)
+    return WeekUiState.Success(
+        weekStart = start,
+        today = today,
+        days = days,
+        allDaySpans = layoutAllDay(allDay, days, zone),
+        timedByDay = days.associateWith { layoutDay(timed, it, zone) },
+    )
+}

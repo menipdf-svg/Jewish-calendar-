@@ -1,0 +1,15 @@
+<resources>
+    <!-- Seed color: desaturated slate blue-gray. Material 3 derives Light & Dark schemes from this. -->
+    <color name="seed">#FF5C6B7A</color>
+    <!-- Adaptive icon background -->
+    <color name="ic_launcher_background">#FF5C6B7A</color>
+    <!-- Window backdrop shown during activity recreation (e.g. on a language
+         switch). Matches the Compose light scheme background/surface so the
+         recreation is seamless; overridden for dark in values-night. -->
+    <color name="window_background">@color/window_background_light</color>
+    <!-- The same backdrops pinned for an in-app theme override, which the night
+         qualifier can't see. MainActivity applies one before the first frame. -->
+    <color name="window_background_light">#FFFBFCFE</color>
+    <color name="window_background_dark">#FF101316</color>
+    <color name="window_background_black">#FF000000</color>
+</resources>

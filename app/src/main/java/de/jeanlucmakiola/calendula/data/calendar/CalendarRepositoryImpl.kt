@@ -1,0 +1,378 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import android.util.Log
+import de.jeanlucmakiola.floret.di.IoDispatcher
+import de.jeanlucmakiola.floret.time.toEpochMillis
+import de.jeanlucmakiola.calendula.data.prefs.CalendarPrefs
+import de.jeanlucmakiola.calendula.data.prefs.SettingsPrefs
+import de.jeanlucmakiola.calendula.domain.curatedForPicker
+import de.jeanlucmakiola.calendula.domain.CalendarSource
+import de.jeanlucmakiola.calendula.domain.EventColorOption
+import de.jeanlucmakiola.calendula.domain.EventDetail
+import de.jeanlucmakiola.calendula.domain.EventForm
+import de.jeanlucmakiola.calendula.domain.EventInstance
+import de.jeanlucmakiola.calendula.domain.SearchCandidate
+import de.jeanlucmakiola.calendula.domain.ics.IcsImportSummary
+import de.jeanlucmakiola.calendula.domain.ics.ParsedIcsEvent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Instant
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * One ContentResolver-backed observer for the lifetime of the App process.
+ * Each public flow re-queries on subscribe and after every tick from the
+ * data source.
+ */
+@Singleton
+class CalendarRepositoryImpl @Inject constructor(
+    private val dataSource: CalendarDataSource,
+    private val prefs: CalendarPrefs,
+    private val settingsPrefs: SettingsPrefs,
+    @IoDispatcher private val io: CoroutineDispatcher,
+) : CalendarRepository {
+
+    /** The configured wall-clock fire time for all-day reminders, read per write. */
+    private suspend fun allDayReminderTimeMinutes(): Int =
+        settingsPrefs.allDayReminderTimeMinutes.first()
+
+    // DROP_OLDEST: tryEmit never fails, so a tick that lands while a subscriber
+    // still holds the previous one is never lost (#364).
+    private val ticks = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /**
+     * Bumped on every [refresh], so one tick's calendar read can be
+     * shared by everything that needs it (see [calendarsSnapshot]).
+     */
+    private val generation = AtomicLong(0L)
+
+    init {
+        dataSource.registerChangeListener(::refresh)
+    }
+
+    // Writes re-query on their own too: some providers never notify the
+    // observer, which left every view stale until a restart (#364).
+    override fun refresh() {
+        generation.incrementAndGet()
+        ticks.tryEmit(Unit)
+    }
+
+    private val writes = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Run a provider write on [io], then re-query whether or not it threw. */
+    private suspend fun <T> write(block: suspend () -> T): T = withContext(io) {
+        try {
+            block()
+        } finally {
+            refresh()
+            writes.tryEmit(Unit)
+        }
+    }
+
+    override val localChanges: Flow<Unit> = merge(
+        writes,
+        prefs.pendingDisabledCalendarIds.distinctUntilChanged().drop(1).map {},
+        prefs.hiddenCalendarIds.distinctUntilChanged().drop(1).map {},
+    )
+
+    /**
+     * Re-query signal for everything filtered by visibility: the provider's own
+     * notifications, plus every change to the pending switch-off set.
+     */
+    private fun visibilityTicks(): Flow<Unit> = merge(
+        ticks.onStart { emit(Unit) },
+        // drop(1): the current value is already covered by the tick above.
+        prefs.pendingDisabledCalendarIds.drop(1).map {},
+    )
+
+    // A switch-off not yet written to the provider is folded into the flag
+    // itself, so every consumer reads one visibility (#75). The reconciler goes
+    // to the data source directly — it needs the provider's own answer.
+    override fun calendars(): Flow<List<CalendarSource>> =
+        visibilityTicks().reQuery {
+            val calendars = calendarsSnapshot()
+            val pendingDisabled = prefs.pendingDisabledCalendarIds.first()
+            if (pendingDisabled.isEmpty()) calendars
+            else calendars.map {
+                if (it.id in pendingDisabled) it.copy(isVisibleInSystem = false) else it
+            }
+        }
+            .distinctUntilChanged()
+            .flowOn(io)
+
+    // Instances are filtered by the system's VISIBLE flag ∪ the switch-offs
+    // still waiting to be written to it ∪ the app-side hidden set from the
+    // filter sheet. [calendars] stays unfiltered so those screens can list and
+    // re-enable invisible calendars.
+    override fun instances(range: ClosedRange<Instant>): Flow<List<EventInstance>> =
+        combine(
+            visibilityTicks().reQuery {
+                // All three reads in one pass, so a list of instances is never
+                // filtered against a visibility snapshot from another tick.
+                QueriedInstances(
+                    instances = dataSource.instances(
+                        beginMillis = range.start.toEpochMillis(),
+                        endMillis = range.endInclusive.toEpochMillis(),
+                    ),
+                    switchedOffCalendarIds = switchedOffCalendarIds(),
+                )
+            },
+            prefs.hiddenCalendarIds,
+        ) { queried, hidden ->
+            val excluded = hidden + queried.switchedOffCalendarIds
+            if (excluded.isEmpty()) queried.instances
+            else queried.instances.filterNot { it.calendarId in excluded }
+        }
+            // Any DataStore edit re-emits the hidden set even when unchanged;
+            // collapse those so views don't re-render for them.
+            .distinctUntilChanged()
+            .flowOn(io)
+
+    /** One instances query plus the visibility it must be filtered against. */
+    private data class QueriedInstances(
+        val instances: List<EventInstance>,
+        val switchedOffCalendarIds: Set<Long>,
+    )
+
+    /** Calendars switched off at system level — hidden, and never reminded about. */
+    private suspend fun invisibleCalendarIds(): Set<Long> = calendarsSnapshot()
+        .filterNot { it.isVisibleInSystem }
+        .mapTo(mutableSetOf()) { it.id }
+
+    /** [invisibleCalendarIds] plus the switch-offs still waiting to be written. */
+    private suspend fun switchedOffCalendarIds(): Set<Long> =
+        invisibleCalendarIds() + prefs.pendingDisabledCalendarIds.first()
+
+    private val calendarsLock = Mutex()
+    private var cachedGeneration = -1L
+    private var cachedPending: Set<Long>? = null
+    private var cachedCalendars: List<CalendarSource> = emptyList()
+
+    /**
+     * The calendar list for the current tick, queried once and shared, so every
+     * open view doesn't pay for its own `Calendars` query and all of them see
+     * one snapshot.
+     *
+     * An empty result is never cached — that is what a read without the calendar
+     * permission returns, and the grant itself doesn't notify the provider. The
+     * pending switch-off set keys the cache alongside the tick, because an id
+     * leaves it before the invalidating observer is dispatched.
+     */
+    private suspend fun calendarsSnapshot(): List<CalendarSource> = calendarsLock.withLock {
+        val current = generation.get()
+        val pending = prefs.pendingDisabledCalendarIds.first()
+        if (current != cachedGeneration || pending != cachedPending || cachedCalendars.isEmpty()) {
+            cachedCalendars = dataSource.calendars()
+            cachedGeneration = current
+            cachedPending = pending
+        }
+        cachedCalendars
+    }
+
+    override suspend fun eventOccurrences(eventId: Long, range: ClosedRange<Instant>): List<EventInstance> =
+        withContext(io) {
+            dataSource.eventInstances(eventId, range.start.toEpochMillis(), range.endInclusive.toEpochMillis())
+        }
+
+    override suspend fun eventDetail(eventId: Long): EventDetail = withContext(io) {
+        dataSource.eventDetail(eventId, allDayReminderTimeMinutes())
+            ?: throw NoSuchEventException(eventId)
+    }
+
+    override suspend fun searchEvents(query: String): List<SearchCandidate> = withContext(io) {
+        if (query.isBlank()) return@withContext emptyList()
+        val excluded = prefs.hiddenCalendarIds.first() + switchedOffCalendarIds()
+        dataSource.searchEvents(query)
+            .let { if (excluded.isEmpty()) it else it.filterNot { c -> c.event.calendarId in excluded } }
+    }
+
+    override suspend fun eventColorPalette(calendarId: Long): List<EventColorOption> =
+        withContext(io) { dataSource.publishedEventColors(calendarId).curatedForPicker() }
+
+    override suspend fun createLocalCalendar(
+        displayName: String,
+        color: Int,
+        description: String?,
+    ): Long = write {
+        dataSource.createLocalCalendar(displayName, color, description)
+    }
+
+    override suspend fun updateCalendar(
+        id: Long,
+        displayName: String,
+        color: Int,
+        description: String?,
+    ) = write { dataSource.updateCalendar(id, displayName, color, description) }
+
+    override suspend fun deleteCalendar(id: Long) =
+        write { dataSource.deleteCalendar(id) }
+
+    override suspend fun setCalendarsVisible(ids: Collection<Long>, visible: Boolean) =
+        write {
+            val canWrite = dataSource.canWriteCalendars()
+            if (canWrite) ids.forEach { dataSource.setCalendarVisible(it, visible) }
+            // Nothing of ours is left waiting for the provider once the write
+            // lands, and switching one back on retires its entry. With read-only
+            // permission a switch-off still works, app-side, and the reconciler
+            // flushes it if WRITE_CALENDAR ever arrives.
+            if (canWrite || visible) {
+                prefs.removePendingDisabledCalendarIds(ids)
+            } else {
+                prefs.addPendingDisabledCalendarIds(ids)
+            }
+        }
+
+    override suspend fun exportEvents(calendarIds: Set<Long>?) =
+        withContext(io) { dataSource.exportableEvents(calendarIds, allDayReminderTimeMinutes()) }
+
+    override suspend fun importEvents(
+        targetCalendarId: Long,
+        events: List<ParsedIcsEvent>,
+    ): IcsImportSummary = write {
+        val existing = dataSource.existingUids(targetCalendarId)
+        // Both are per-calendar, not per-event: looking them up once keeps a
+        // thousand-event restore to two extra queries. The palette is the
+        // uncurated one — an imported colour is matched against every key the
+        // account accepts, not the subset the picker shows.
+        val palette = dataSource.publishedEventColors(targetCalendarId)
+        val allDayMinutes = allDayReminderTimeMinutes()
+        var imported = 0
+        var skipped = 0
+        var failed = 0
+        var notAttempted = 0
+        for ((index, event) in events.withIndex()) {
+            // A known UID means the event is already in this calendar — skip,
+            // keeping a restore idempotent (no overwrite this pass).
+            if (event.uid != null && event.uid in existing) {
+                skipped++
+                continue
+            }
+            try {
+                dataSource.insertImportedEvent(event, targetCalendarId, allDayMinutes, palette)
+                imported++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: SecurityException) {
+                // Not this event's fault: the permission or the target calendar is
+                // gone, so every remaining insert would fail the same way.
+                Log.w(TAG, "Import stopped: the calendar is no longer writable", e)
+                // A known UID would have been skipped whatever happened, so it is
+                // no part of what a retry still has to import.
+                val remaining = events.drop(index)
+                val duplicates = remaining.count { it.uid?.let { uid -> uid in existing } == true }
+                skipped += duplicates
+                notAttempted = remaining.size - duplicates
+                break
+            } catch (e: Exception) {
+                // One event the provider won't take must not cost the user the
+                // rest of the file — foreign exports do carry rows it rejects
+                // outright (a malformed RRULE throws straight out of insert).
+                failed++
+                Log.w(TAG, "Skipped an unimportable event", e)
+            }
+        }
+        IcsImportSummary(
+            imported = imported,
+            skippedDuplicate = skipped,
+            failed = failed,
+            notAttempted = notAttempted,
+        )
+    }
+
+    override suspend fun createEvent(form: EventForm): Long = write {
+        dataSource.insertEvent(form, allDayReminderTimeMinutes())
+    }
+
+    override suspend fun updateEvent(
+        eventId: Long,
+        original: EventForm,
+        updated: EventForm,
+    ) = write {
+        dataSource.updateEvent(eventId, original, updated, allDayReminderTimeMinutes())
+    }
+
+    override suspend fun deleteEvent(eventId: Long) = write {
+        dataSource.deleteEvent(eventId)
+    }
+
+    override suspend fun moveEvent(
+        eventId: Long,
+        targetCalendarId: Long,
+        original: EventForm,
+        updated: EventForm,
+    ): Long = write {
+        dataSource.moveEvent(
+            eventId, targetCalendarId, original, updated, allDayReminderTimeMinutes(),
+        )
+    }
+
+    override suspend fun updateOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        form: EventForm,
+    ): Long = write {
+        dataSource.updateOccurrence(
+            eventId, beginMillis, original, form, allDayReminderTimeMinutes(),
+        )
+    }
+
+    override suspend fun updateEventFromOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        updated: EventForm,
+    ): Long = write {
+        dataSource.updateEventFromOccurrence(
+            eventId, beginMillis, original, updated, allDayReminderTimeMinutes(),
+        )
+    }.also { newId -> if (newId != eventId) splits.tryEmit(SeriesSplit(eventId, newId)) }
+
+    private val splits = MutableSharedFlow<SeriesSplit>(extraBufferCapacity = 8)
+
+    override val seriesSplits: Flow<SeriesSplit> = splits
+
+    override suspend fun deleteOccurrence(eventId: Long, beginMillis: Long) = write {
+        dataSource.deleteOccurrence(eventId, beginMillis)
+    }
+
+    override suspend fun deleteEventFromOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+    ) = write {
+        dataSource.deleteEventFromOccurrence(eventId, beginMillis)
+    }
+
+    private companion object {
+        const val TAG = "CalendarRepository"
+    }
+}
+
+private fun <T> Flow<Unit>.reQuery(block: suspend () -> T): Flow<T> = flow {
+    collect { emit(block()) }
+}

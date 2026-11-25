@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock shown in the widget picker on Android 14 and below
+     (android:previewLayout); 15+ shows the generated preview instead. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/preview_widget_bg"
+    android:orientation="vertical"
+    android:padding="8dp"
+    tools:ignore="HardcodedText,NestedWeights,DisableBaselineAlignment,SmallSp,TooManyViews,UselessParent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="26"
+            android:textColor="@color/widget_preview_primary"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Monday&#10;October"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/preview_widget_event_bg"
+        android:backgroundTint="@color/widget_preview_event_blue"
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/settings_past_events_sample_morning"
+            android:textColor="@color/widget_preview_on_event_light"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="9:30 – 10:00"
+            android:textColor="@color/widget_preview_on_event_light"
+            android:textSize="11sp" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:background="@drawable/preview_widget_event_bg"
+        android:backgroundTint="@color/widget_preview_event_green"
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/settings_past_events_sample_midday"
+            android:textColor="@color/widget_preview_on_event_light"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="12:30 – 13:30"
+            android:textColor="@color/widget_preview_on_event_light"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

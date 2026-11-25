@@ -1,0 +1,5 @@
+Ajouts
+• Traduction en galicien, complète dès le départ. Merci à Jani Buni.
+
+Modifications
+• L’arabe, l’italien et l’espagnol sont désormais entièrement traduits, avec des mises à jour pour le biélorusse, l’allemand et le slovaque.

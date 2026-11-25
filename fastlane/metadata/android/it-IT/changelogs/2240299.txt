@@ -1,0 +1,6 @@
+Correzioni
+• Gli eventi spostati rapidamente uno dopo l’altro non vanno più persi: gli spostamenti vengono salvati in ordine.
+• Un messaggio avvisa quando uno spostamento non è stato salvato.
+
+Modifiche
+• Il titolo della vista giornaliera mostra il mese.

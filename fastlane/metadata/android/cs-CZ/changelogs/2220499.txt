@@ -1,0 +1,3 @@
+Opraveno
+• Upravené, přesunuté a smazané události se teď na každém telefonu projeví hned. Na některých, mimo jiné Samsungu, zůstala změněná událost beze změny až do restartu aplikace.
+• Widgety na domovské obrazovce načítají jen události, které zobrazují. To by mělo pomoct widgetům, které na pomalejších telefonech zůstávaly na „načítání“.

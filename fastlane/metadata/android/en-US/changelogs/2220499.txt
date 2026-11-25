@@ -1,0 +1,3 @@
+Fixed
+• Edits, moves and deletions show up straight away on every phone. On some phones, Samsung among them, a changed event stayed put until you restarted the app.
+• The home-screen widgets load only the events they show. This should help widgets stuck on "loading" on slower phones.

@@ -1,0 +1,2 @@
+Opgelost
+• Open je de app de volgende ochtend, dan zie je de juiste dag. De maandweergave markeerde gisteren als vandaag en hield de dag die je de avond ervoor koos geselecteerd. Alle weergaven gaan nu mee naar de nieuwe dag.

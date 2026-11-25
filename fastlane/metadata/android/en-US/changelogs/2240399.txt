@@ -1,0 +1,5 @@
+Added
+• Galician translation, complete from the start. Thanks to Jani Buni.
+
+Changed
+• Arabic, Italian and Spanish are now fully translated, with updates to Belarusian, German and Slovak.

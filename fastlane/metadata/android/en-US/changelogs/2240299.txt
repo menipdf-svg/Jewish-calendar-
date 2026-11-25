@@ -1,0 +1,6 @@
+Fixed
+• Events moved in quick succession are no longer lost: moves are saved in order.
+• A message says when a move could not be saved.
+
+Changed
+• The day view title shows the month.

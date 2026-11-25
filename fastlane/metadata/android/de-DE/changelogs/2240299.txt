@@ -1,0 +1,6 @@
+Behoben
+• Schnell hintereinander verschobene Termine gehen nicht mehr verloren: Verschiebungen werden der Reihe nach gespeichert.
+• Eine Meldung sagt, wenn eine Verschiebung nicht gespeichert werden konnte.
+
+Geändert
+• Der Titel der Tagesansicht zeigt den Monat.

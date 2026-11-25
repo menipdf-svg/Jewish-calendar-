@@ -1,0 +1,11 @@
+Új
+• Hosszan nyomva egy eseményt kijelölhetsz, áthelyezhetsz vagy átméretezhetsz, üres helyen újat vázolhatsz.
+• Koppints egy telefonszámra a híváshoz.
+• A HTML-leírások formázva jelennek meg.
+• A napirendben visszagörgethetsz a korábbi napokra.
+• Esemény létrehozása megosztott vagy kijelölt szövegből.
+• Fekete téma AMOLED kijelzőkhöz.
+
+Javítva
+• Óraátállítás napján az események a valós idejükben látszanak.
+• Áthelyezett ismétlődő esemény megtartja a törölt és szerkesztett alkalmakat.

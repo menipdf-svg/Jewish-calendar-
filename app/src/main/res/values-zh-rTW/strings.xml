@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="backup_interval_units">
+        <item>Minutes</item>
+        <item>Hours</item>
+        <item>Days</item>
+        <item>Weeks</item>
+    </string-array>
+    <string name="app_tagline">一個現代的行事曆。</string>
+    <string name="app_name_calendar_alias">行事曆</string>
+    <string name="state_loading">加載中……</string>
+    <string name="state_retry">重試</string>
+    <string name="state_failure_unknown">出錯了。</string>
+    <string name="state_failure_permission">需使用行事曆。</string>
+    <string name="state_failure_permission_body">Calendula會直接從系統行事曆讀取你的活動，即需要有行事曆存取才能顯示行程。</string>
+    <string name="state_failure_permission_action">授權進入</string>
+    <string name="state_failure_no_calendars">無設定行事曆。</string>
+    <string name="state_failure_no_calendars_body">在這台裝置新增行事曆帳號，行程將會顯示在這。</string>
+    <string name="state_failure_no_calendars_action">開放系統行事曆設定</string>
+    <string name="state_failure_all_hidden">你所有的行事曆都關閉了。</string>
+    <string name="state_failure_all_hidden_body">至少開啟一項行事曆以查看其活動。</string>
+    <string name="state_failure_all_hidden_action">管理行事曆</string>
+    <string name="state_failure_no_import_target">沒有一個行事曆能加入新行程。</string>
+    <string name="state_failure_no_import_target_body">被開啟的行事曆是唯讀的、由其他應用程式管理，或未與此裝置同步。開啟一個可以記錄活動的行事曆或新增一個本地活動。</string>
+    <string name="state_failure_event_not_found">該事項已不存在。</string>
+    <string name="state_failure_event_not_found_body">可能被刪除或被關閉。</string>
+    <string name="state_failure_provider">無法識別該行事曆。</string>
+</resources>

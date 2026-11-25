@@ -1,0 +1,61 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import de.jeanlucmakiola.floret.time.toKotlinInstantFromEpochMillis
+import android.provider.CalendarContract
+import android.util.Log
+import de.jeanlucmakiola.calendula.domain.EventInstance
+import de.jeanlucmakiola.calendula.domain.EventResponse
+
+private const val TAG = "InstanceMapper"
+
+internal fun ColumnReader.toEventInstance(): EventInstance? {
+    val begin = getLong(InstanceProjection.IDX_BEGIN)
+    val end = getLong(InstanceProjection.IDX_END)
+
+    if (begin < 0L) {
+        Log.w(TAG, "Dropping row with negative begin=$begin")
+        return null
+    }
+    if (end < begin) {
+        Log.w(TAG, "Dropping row with end=$end < begin=$begin")
+        return null
+    }
+
+    // Left blank when the event has no title: the placeholder is a display
+    // string, so it belongs to the UI layer where it can be localised (#321).
+    val title = getString(InstanceProjection.IDX_TITLE).orEmpty()
+
+    val color = getIntOrNull(InstanceProjection.IDX_EVENT_COLOR) ?: getInt(InstanceProjection.IDX_CALENDAR_COLOR)
+
+    return EventInstance(
+        instanceId = getLong(InstanceProjection.IDX_INSTANCE_ID),
+        eventId = getLong(InstanceProjection.IDX_EVENT_ID),
+        calendarId = getLong(InstanceProjection.IDX_CALENDAR_ID),
+        title = title,
+        start = begin.toKotlinInstantFromEpochMillis(),
+        end = end.toKotlinInstantFromEpochMillis(),
+        isAllDay = getInt(InstanceProjection.IDX_ALL_DAY) != 0,
+        color = color,
+        location = getString(InstanceProjection.IDX_LOCATION),
+        response = mapEventResponse(getInt(InstanceProjection.IDX_SELF_ATTENDEE_STATUS)),
+        status = eventStatus(InstanceProjection.IDX_STATUS),
+    )
+}
+
+/**
+ * A [CancelledEventProjection] row as an instance. Its id is the negated event
+ * id, so it can't collide with a provider instance id.
+ */
+internal fun ColumnReader.toCancelledOneOff(): EventInstance? =
+    toEventInstance()?.let { it.copy(instanceId = -it.eventId) }
+
+/**
+ * `SELF_ATTENDEE_STATUS` as the calendar surfaces read it: a tentative "maybe"
+ * counts as going, and everything that is not an open or refused invitation —
+ * your own events included — falls through to [EventResponse.Going].
+ */
+internal fun mapEventResponse(raw: Int): EventResponse = when (raw) {
+    CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED -> EventResponse.Declined
+    CalendarContract.Attendees.ATTENDEE_STATUS_INVITED -> EventResponse.Invited
+    else -> EventResponse.Going
+}

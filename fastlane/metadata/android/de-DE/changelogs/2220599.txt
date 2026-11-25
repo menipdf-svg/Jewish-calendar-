@@ -1,0 +1,2 @@
+Behoben
+• Wird die App am nächsten Morgen geöffnet, zeigt sie den richtigen Tag. Die Monatsansicht markierte bisher gestern als heute und ließ den am Vorabend gewählten Tag ausgewählt. Jetzt wechseln alle Ansichten auf den neuen Tag.

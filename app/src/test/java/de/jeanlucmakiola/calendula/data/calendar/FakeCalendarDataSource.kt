@@ -1,0 +1,317 @@
+package de.jeanlucmakiola.calendula.data.calendar
+
+import android.provider.CalendarContract
+import de.jeanlucmakiola.calendula.domain.CalendarSource
+import de.jeanlucmakiola.calendula.domain.EventColorOption
+import de.jeanlucmakiola.calendula.domain.EventDetail
+import de.jeanlucmakiola.calendula.domain.EventForm
+import de.jeanlucmakiola.calendula.domain.EventInstance
+import de.jeanlucmakiola.calendula.domain.SearchCandidate
+import de.jeanlucmakiola.calendula.domain.contacts.SpecialDateType
+import de.jeanlucmakiola.calendula.domain.ics.IcsEvent
+import de.jeanlucmakiola.calendula.domain.ics.ParsedIcsEvent
+import java.time.ZoneId
+
+/**
+ * Test-only fake. Tunable via the three `var` properties; `tick()` simulates
+ * a provider change so the repository re-queries.
+ */
+internal class FakeCalendarDataSource : CalendarDataSource {
+
+    var calendarsResult: List<CalendarSource> = emptyList()
+    var instancesResult: (Long, Long) -> List<EventInstance> = { _, _ -> emptyList() }
+    var searchResult: (String) -> List<SearchCandidate> = { _ -> emptyList() }
+    var eventDetailResult: (Long) -> EventDetail? = { null }
+    var publishedEventColorsResult: (Long) -> List<EventColorOption> = { emptyList() }
+    var exportableEventsResult: List<IcsEvent> = emptyList()
+    /** The [calendarIds] the last [exportableEvents] call received (null = all). */
+    var lastExportableEventsCalendarIds: Set<Long>? = null
+    /** UIDs the target calendar already holds, for import dedup. */
+    var existingUidsResult: Set<String> = emptySet()
+    /** Set to make the next write call throw. */
+    var writeError: Exception? = null
+
+    /** Deletes let through before [writeError] applies, for part-way failures. */
+    var deletesBeforeError: Int = 0
+    private var deletes = 0
+    /** Id returned by the next [insertEvent]. */
+    var nextInsertId: Long = 100L
+
+    val insertedForms = mutableListOf<EventForm>()
+    val updatedEvents = mutableListOf<Triple<Long, EventForm, EventForm>>()
+    data class MovedEvent(
+        val eventId: Long,
+        val targetCalendarId: Long,
+        val original: EventForm,
+        val updated: EventForm,
+    )
+    val movedEvents = mutableListOf<MovedEvent>()
+    val updatedOccurrences = mutableListOf<Triple<Long, Long, EventForm>>()
+    val updatedFromOccurrences = mutableListOf<Triple<Long, Long, EventForm>>()
+    val deletedEventIds = mutableListOf<Long>()
+    val deletedOccurrences = mutableListOf<Pair<Long, Long>>()
+    val deletedFromOccurrences = mutableListOf<Pair<Long, Long>>()
+    /** Id returned by the next [createLocalCalendar]. */
+    var nextCalendarId: Long = 500L
+    data class CreatedCalendar(val displayName: String, val color: Int, val description: String?)
+    data class UpdatedCalendar(
+        val id: Long,
+        val displayName: String,
+        val color: Int,
+        val description: String?,
+    )
+    val createdCalendars = mutableListOf<CreatedCalendar>()
+    val updatedCalendars = mutableListOf<UpdatedCalendar>()
+    val deletedCalendarIds = mutableListOf<Long>()
+
+    private val listeners = mutableListOf<() -> Unit>()
+
+    /** How often [calendars] was queried — the repository shares one read per tick. */
+    var calendarQueries = 0
+        private set
+
+    override fun calendars(): List<CalendarSource> {
+        calendarQueries++
+        return calendarsResult
+    }
+    override fun instances(beginMillis: Long, endMillis: Long): List<EventInstance> =
+        instancesResult(beginMillis, endMillis)
+    override fun searchEvents(query: String): List<SearchCandidate> = searchResult(query)
+    override fun eventDetail(eventId: Long, allDayReminderTimeMinutes: Int): EventDetail? =
+        eventDetailResult(eventId)
+    override fun publishedEventColors(calendarId: Long): List<EventColorOption> =
+        publishedEventColorsResult(calendarId)
+    override fun exportableEvents(
+        calendarIds: Set<Long>?,
+        allDayReminderTimeMinutes: Int,
+    ): List<IcsEvent> {
+        lastExportableEventsCalendarIds = calendarIds
+        return exportableEventsResult
+    }
+
+    override fun existingUids(calendarId: Long): Set<String> = existingUidsResult
+
+    /** (event, targetCalendarId) pairs passed to [insertImportedEvent]. */
+    val importedEvents = mutableListOf<Pair<ParsedIcsEvent, Long>>()
+
+    /** Thrown instead of [writeError] for events whose summary is in this set. */
+    val failingImportSummaries = mutableSetOf<String>()
+
+    /** Imports let through before [writeError] applies, for part-way failures. */
+    var importsBeforeError: Int = 0
+    private var imports = 0
+
+    /** The [colorPalette] the last [insertImportedEvent] call received. */
+    var lastImportPalette: List<EventColorOption> = emptyList()
+
+    override fun insertImportedEvent(
+        event: ParsedIcsEvent,
+        calendarId: Long,
+        allDayReminderTimeMinutes: Int,
+        colorPalette: List<EventColorOption>,
+    ): Long {
+        lastImportPalette = colorPalette
+        if (imports++ >= importsBeforeError) writeError?.let { throw it }
+        if (event.summary in failingImportSummaries) error("rejected: ${event.summary}")
+        importedEvents += event to calendarId
+        return nextInsertId
+    }
+
+    override fun createLocalCalendar(displayName: String, color: Int, description: String?): Long {
+        writeError?.let { throw it }
+        createdCalendars += CreatedCalendar(displayName, color, description)
+        return nextCalendarId
+    }
+
+    override fun updateCalendar(id: Long, displayName: String, color: Int, description: String?) {
+        writeError?.let { throw it }
+        updatedCalendars += UpdatedCalendar(id, displayName, color, description)
+    }
+
+    /** (id, visible) pairs passed to [setCalendarVisible], in call order. */
+    val visibilityWrites = mutableListOf<Pair<Long, Boolean>>()
+
+    override fun setCalendarVisible(id: Long, visible: Boolean) {
+        writeError?.let { throw it }
+        visibilityWrites += id to visible
+        // Reflect the write so a follow-up [calendars] read sees it, the way the
+        // provider would once its notification has re-triggered the query.
+        calendarsResult = calendarsResult.map {
+            if (it.id == id) it.copy(isVisibleInSystem = visible) else it
+        }
+    }
+
+    /** Whether the fake holds `WRITE_CALENDAR`; false models a read-only grant. */
+    var canWrite: Boolean = true
+
+    override fun canWriteCalendars(): Boolean = canWrite
+
+    override fun isCalendarVisible(id: Long): Boolean? =
+        calendarsResult.firstOrNull { it.id == id }?.isVisibleInSystem
+
+    override fun deleteCalendar(id: Long) {
+        writeError?.let { throw it }
+        deletedCalendarIds += id
+        managedCalendarRows.removeAll { it.id == id }
+        managedEvents.remove(id)
+    }
+
+    /** All-day reminder fire-time minute-of-day passed into the last write. */
+    val allDayReminderTimes = mutableListOf<Int>()
+
+    override fun insertEvent(form: EventForm, allDayReminderTimeMinutes: Int): Long {
+        writeError?.let { throw it }
+        insertedForms += form
+        allDayReminderTimes += allDayReminderTimeMinutes
+        return nextInsertId
+    }
+
+    override fun updateEvent(
+        eventId: Long,
+        original: EventForm,
+        updated: EventForm,
+        allDayReminderTimeMinutes: Int,
+    ) {
+        writeError?.let { throw it }
+        updatedEvents += Triple(eventId, original, updated)
+        allDayReminderTimes += allDayReminderTimeMinutes
+    }
+
+    override fun moveEvent(
+        eventId: Long,
+        targetCalendarId: Long,
+        original: EventForm,
+        updated: EventForm,
+        allDayReminderTimeMinutes: Int,
+    ): Long {
+        writeError?.let { throw it }
+        movedEvents += MovedEvent(eventId, targetCalendarId, original, updated)
+        allDayReminderTimes += allDayReminderTimeMinutes
+        return nextInsertId
+    }
+
+    override fun updateOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        form: EventForm,
+        allDayReminderTimeMinutes: Int,
+    ): Long {
+        writeError?.let { throw it }
+        updatedOccurrences += Triple(eventId, beginMillis, form)
+        allDayReminderTimes += allDayReminderTimeMinutes
+        return nextInsertId
+    }
+
+    override fun updateEventFromOccurrence(
+        eventId: Long,
+        beginMillis: Long,
+        original: EventForm,
+        updated: EventForm,
+        allDayReminderTimeMinutes: Int,
+    ): Long {
+        writeError?.let { throw it }
+        updatedFromOccurrences += Triple(eventId, beginMillis, updated)
+        allDayReminderTimes += allDayReminderTimeMinutes
+        return nextInsertId
+    }
+
+    override fun deleteEventFromOccurrence(eventId: Long, beginMillis: Long) {
+        writeError?.let { throw it }
+        deletedFromOccurrences += eventId to beginMillis
+    }
+
+    override fun deleteEvent(eventId: Long) {
+        writeError?.let { if (deletes++ >= deletesBeforeError) throw it }
+        deletedEventIds += eventId
+        managedEvents.values.forEach { rows -> rows.removeAll { it.eventId == eventId } }
+    }
+
+    // --- Managed special-dates surface (stateful, so a re-sync sees inserts) ---
+
+    var nextManagedEventId: Long = 1_000L
+    private var managedCalendarSeq: Long = 700L
+    private val managedCalendarRows = mutableListOf<ManagedCalendarRow>()
+    private val managedEvents = mutableMapOf<Long, MutableList<ManagedEventRow>>()
+
+    data class CreatedManagedCalendar(val displayName: String, val color: Int, val type: SpecialDateType)
+    val createdManagedCalendars = mutableListOf<CreatedManagedCalendar>()
+    val insertedManagedEvents = mutableListOf<Pair<EventForm, String>>()
+    val updatedManagedFields = mutableListOf<Pair<Long, Map<String, Any?>>>()
+
+    /** Preset an orphan managed calendar (e.g. to test adoption after a prefs wipe). */
+    fun presetManagedCalendar(id: Long, type: SpecialDateType) {
+        managedCalendarRows += ManagedCalendarRow(id, type)
+        managedEvents.getOrPut(id) { mutableListOf() }
+    }
+
+    override fun createManagedCalendar(displayName: String, color: Int, type: SpecialDateType): Long {
+        writeError?.let { throw it }
+        createdManagedCalendars += CreatedManagedCalendar(displayName, color, type)
+        val id = managedCalendarSeq++
+        managedCalendarRows += ManagedCalendarRow(id, type)
+        managedEvents.getOrPut(id) { mutableListOf() }
+        return id
+    }
+
+    override fun findManagedCalendars(): List<ManagedCalendarRow> = managedCalendarRows.toList()
+
+    override fun queryManagedEvents(calendarId: Long): List<ManagedEventRow> =
+        managedEvents[calendarId]?.toList() ?: emptyList()
+
+    override fun insertManagedEvent(form: EventForm, uid: String, allDayReminderTimeMinutes: Int): Long {
+        writeError?.let { throw it }
+        insertedManagedEvents += form to uid
+        allDayReminderTimes += allDayReminderTimeMinutes
+        val id = nextManagedEventId++
+        val times = form.toWriteTimes(ZoneId.systemDefault())
+        managedEvents.getOrPut(requireNotNull(form.calendarId)) { mutableListOf() } +=
+            ManagedEventRow(id, uid, form.title.trim(), times.dtStartMillis, form.rrule)
+        return id
+    }
+
+    /** (calendarId, allDayTime, minutes) recorded from applyManagedCalendarReminders. */
+    val appliedManagedReminders = mutableListOf<Triple<Long, Int, List<Int>>>()
+
+    override fun applyManagedCalendarReminders(
+        calendarId: Long,
+        allDayReminderTimeMinutes: Int,
+        minutes: List<Int>,
+    ) {
+        writeError?.let { throw it }
+        appliedManagedReminders += Triple(calendarId, allDayReminderTimeMinutes, minutes)
+    }
+
+    override fun updateManagedFields(eventId: Long, values: Map<String, Any?>) {
+        writeError?.let { throw it }
+        if (values.isEmpty()) return
+        updatedManagedFields += eventId to values
+        managedEvents.values.forEach { rows ->
+            val idx = rows.indexOfFirst { it.eventId == eventId }
+            if (idx >= 0) {
+                var row = rows[idx]
+                (values[CalendarContract.Events.TITLE] as? String)?.let { row = row.copy(title = it) }
+                (values[CalendarContract.Events.DTSTART] as? Long)?.let { row = row.copy(dtStartMillis = it) }
+                if (values.containsKey(CalendarContract.Events.RRULE)) {
+                    row = row.copy(rrule = values[CalendarContract.Events.RRULE] as? String)
+                }
+                rows[idx] = row
+            }
+        }
+    }
+
+    override fun deleteOccurrence(eventId: Long, beginMillis: Long) {
+        writeError?.let { throw it }
+        deletedOccurrences += eventId to beginMillis
+    }
+    override fun registerChangeListener(listener: () -> Unit) {
+        listeners += listener
+    }
+    override fun unregisterChangeListener(listener: () -> Unit) {
+        listeners -= listener
+    }
+
+    fun tick() {
+        listeners.forEach { it() }
+    }
+}

@@ -1,0 +1,3 @@
+Opravené
+• Rozdelené mesačné zobrazenie pojme viac udalostí: vybraný deň ukazuje dátum len raz, v čipe filtra, a záhlavia dní zaberajú menej miesta.
+• Bodky udalostí v rozdelenej mriežke už v dňoch s „+N“ neklesajú nadol.

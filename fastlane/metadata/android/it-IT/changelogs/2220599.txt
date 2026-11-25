@@ -1,0 +1,2 @@
+Corretto
+• Aprendo l'app la mattina dopo, viene mostrato il giorno giusto. La vista mese segnava ieri come oggi e lasciava selezionato il giorno scelto la sera prima. Ora tutte le viste passano al nuovo giorno.

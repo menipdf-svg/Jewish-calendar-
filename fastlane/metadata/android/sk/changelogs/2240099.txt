@@ -1,0 +1,13 @@
+Novinky
+• Sedem nových widgetov, napríklad rýchle pridanie, pás týždňa, odpočítavanie a mesiac s dňom.
+• Každý widget má vlastné nastavenia: pozadie, motív a kalendáre.
+• Nový vzhľad widgetov agendy a mesiaca.
+• Celodenné udalosti môžete presunúť na iný deň alebo do mriežky.
+• Zrušené a predbežné udalosti sú označené.
+• Možnosť skryť časy začiatku v zobrazení mesiaca.
+
+Opravené
+• Krátke udalosti neskoro večer sú viditeľné celé.
+
+Zmenené
+• Jedno upozornenie na udalosť.

@@ -1,0 +1,6 @@
+Javítva
+• A gyors egymásutánban áthelyezett események többé nem vesznek el: az áthelyezések sorban mentődnek.
+• Üzenet jelzi, ha egy áthelyezést nem sikerült menteni.
+
+Változások
+• A napi nézet címe a hónapot mutatja.

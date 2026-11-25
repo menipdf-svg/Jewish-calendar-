@@ -1,0 +1,13 @@
+Nouveautés
+• Sept nouveaux widgets, dont ajout rapide, semaine, compte à rebours et mois avec jour.
+• Réglages par widget : fond, thème, agendas.
+• Nouveau look des widgets agenda et mois.
+• Glissez les événements d’une journée vers un autre jour ou dans la grille.
+• Événements annulés et provisoires signalés.
+• Heures de début masquables dans la vue mois.
+
+Corrections
+• Les événements courts en fin de soirée sont entièrement visibles.
+
+Modifications
+• Une seule notification par événement.

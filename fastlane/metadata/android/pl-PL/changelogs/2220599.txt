@@ -1,0 +1,2 @@
+Poprawki
+• Po otwarciu aplikacji następnego ranka widać właściwy dzień. Widok miesiąca oznaczał wczoraj jako dziś i zostawiał zaznaczony dzień wybrany poprzedniego wieczoru. Teraz wszystkie widoki przechodzą na nowy dzień.

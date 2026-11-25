@@ -1,0 +1,6 @@
+Correcciones
+• Los eventos movidos rápidamente uno tras otro ya no se pierden: los cambios se guardan en orden.
+• Un mensaje avisa cuando no se pudo guardar un cambio.
+
+Cambios
+• El título de la vista diaria muestra el mes.

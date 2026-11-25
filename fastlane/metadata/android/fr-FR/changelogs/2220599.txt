@@ -1,0 +1,2 @@
+Corrigé
+• En ouvrant l'app le lendemain matin, vous voyez le bon jour. La vue mois marquait la veille comme aujourd'hui et gardait sélectionné le jour choisi la veille au soir. Toutes les vues passent maintenant au nouveau jour.

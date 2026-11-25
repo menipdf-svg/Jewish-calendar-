@@ -1,0 +1,11 @@
+Novinky
+• Dlhým stlačením udalosť vyberiete, presuniete alebo zmeníte jej dĺžku, na voľnom mieste navrhnete novú.
+• Ťuknutím na telefónne číslo v udalosti zavoláte.
+• Popisy v HTML sa zobrazujú formátovane.
+• V prehľade udalostí sa dá posunúť späť k skorším dňom.
+• Udalosti z textu, ktorý zdieľate alebo označíte.
+• Čierny motív pre displeje AMOLED.
+
+Opravené
+• Udalosti v dňoch zmeny času sa zobrazujú v správny čas.
+• Presun opakovanej udalosti zachová vymazané a upravené výskyty.

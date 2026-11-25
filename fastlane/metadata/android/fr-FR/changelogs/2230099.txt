@@ -1,0 +1,11 @@
+Nouveautés
+• Appui long sur un événement pour le sélectionner, déplacer ou redimensionner, ou sur un créneau libre pour en créer un.
+• Touchez un numéro de téléphone pour appeler.
+• Les descriptions HTML s’affichent mises en forme.
+• Remontez aux jours passés dans l’agenda.
+• Créez un événement depuis un texte partagé.
+• Thème noir pour écrans AMOLED.
+
+Corrigé
+• Événements à la bonne heure les jours de changement d’heure.
+• Une série déplacée garde ses occurrences supprimées ou modifiées.

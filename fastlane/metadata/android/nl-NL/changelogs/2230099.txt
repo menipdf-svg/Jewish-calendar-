@@ -1,0 +1,11 @@
+Nieuw
+• Houd een afspraak ingedrukt om hem te selecteren, verplaatsen of de duur te wijzigen, of een leeg vak voor een nieuwe.
+• Tik op een telefoonnummer om te bellen.
+• HTML-beschrijvingen worden opgemaakt getoond.
+• Scroll in de agenda terug naar eerdere dagen.
+• Maak afspraken van gedeelde of geselecteerde tekst.
+• Zwart thema voor AMOLED-schermen.
+
+Opgelost
+• Afspraken op dagen met tijdwijziging staan op de juiste tijd.
+• Een verplaatste reeks behoudt verwijderde en bewerkte afspraken.

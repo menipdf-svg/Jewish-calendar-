@@ -1,0 +1,6 @@
+Opravené
+• Udalosti rýchlo presunuté za sebou sa už nestrácajú: presuny sa ukladajú postupne.
+• Správa upozorní, keď sa presun nepodarilo uložiť.
+
+Zmenené
+• Názov denného zobrazenia ukazuje mesiac.

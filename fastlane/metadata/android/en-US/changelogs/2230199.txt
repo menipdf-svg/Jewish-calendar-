@@ -1,0 +1,3 @@
+Fixed
+• The split month view fits more events: a selected day shows its date once, in the filter chip, and the day headers take less room.
+• Event dots in the split grid no longer drop down on days with a "+N".

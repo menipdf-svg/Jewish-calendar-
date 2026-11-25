@@ -1,0 +1,2 @@
+Opravené
+• Keď aplikáciu otvoríte na druhý deň ráno, ukáže správny deň. Mesiac predtým označoval včerajšok ako dnešok a nechával vybraný deň, ktorý ste zvolili večer predtým. Všetky zobrazenia teraz prejdú na nový deň.

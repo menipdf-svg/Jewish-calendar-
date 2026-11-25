@@ -1,0 +1,3 @@
+Corretto
+• La vista mensile divisa mostra più eventi: il giorno selezionato mostra la data una sola volta, nel chip del filtro, e le intestazioni dei giorni occupano meno spazio.
+• I puntini degli eventi nella griglia divisa non scendono più nei giorni con «+N».

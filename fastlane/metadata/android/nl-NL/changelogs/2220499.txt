@@ -1,0 +1,3 @@
+Opgelost
+• Bewerkte, verplaatste en verwijderde afspraken zijn nu op elke telefoon meteen zichtbaar. Op sommige toestellen, waaronder Samsung, bleef een gewijzigde afspraak staan tot je de app opnieuw startte.
+• De widgets op het startscherm laden alleen nog de afspraken die ze tonen. Dat zou widgets moeten helpen die op tragere telefoons op "laden" bleven hangen.

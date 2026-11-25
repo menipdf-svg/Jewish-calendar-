@@ -1,0 +1,6 @@
+Opraveno
+• Události rychle přesunuté za sebou se už neztrácí: přesuny se ukládají postupně.
+• Zpráva upozorní, když přesun nešel uložit.
+
+Změněno
+• Název denního zobrazení ukazuje měsíc.

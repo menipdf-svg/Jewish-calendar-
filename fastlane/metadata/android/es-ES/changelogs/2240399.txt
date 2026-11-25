@@ -1,0 +1,5 @@
+Novedades
+• Traducción al gallego, completa desde el principio. Gracias a Jani Buni.
+
+Cambios
+• El árabe, el italiano y el español ya están traducidos por completo, con mejoras en bielorruso, alemán y eslovaco.

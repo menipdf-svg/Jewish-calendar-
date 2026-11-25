@@ -1,0 +1,12 @@
+Nouveautés
+• Style classique pour le widget agenda.
+• Curseur d’opacité pour le fond des widgets.
+
+Corrections
+• Les numéros de semaine avaient un de moins avec des semaines commençant le dimanche.
+• Le widget mois affiche les événements à toutes les hauteurs.
+• Les événements estompés sont de nouveau lisibles dans les widgets sombres.
+• Les widgets en clair ou sombre suivent les couleurs du système.
+
+Modifications
+• Moins d’autorisations.

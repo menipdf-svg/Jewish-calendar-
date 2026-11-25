@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock shown in the widget picker on Android 14 and below
+     (android:previewLayout); 15+ shows the generated preview instead. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/preview_widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    tools:ignore="HardcodedText,NestedWeights,DisableBaselineAlignment,SmallSp,TooManyViews,UselessLeaf,UselessParent">
+
+    <FrameLayout
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/preview_stripe"
+        android:backgroundTint="@color/widget_preview_event_blue" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="@string/settings_past_events_sample_morning"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="13sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="in 2 h"
+            android:textColor="@color/widget_preview_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="9:30"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

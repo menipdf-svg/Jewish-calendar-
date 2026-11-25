@@ -1,0 +1,13 @@
+New
+• Seven new widgets, including quick add, week strip, countdown and month with day.
+• Each widget has its own settings: background, theme and calendars.
+• New look for the agenda and month widgets.
+• Drag all-day events to another day or into the grid.
+• Cancelled and tentative events are marked.
+• Option to hide start times in the month view.
+
+Fixed
+• Short events late at night are fully visible.
+
+Changed
+• One notification per event.

@@ -1,0 +1,3 @@
+Corretto
+• Gli eventi modificati, spostati o eliminati si aggiornano subito su ogni telefono. Su alcuni, tra cui i Samsung, un evento modificato restava invariato fino al riavvio dell'app.
+• I widget della schermata Home caricano solo gli eventi che mostrano. Dovrebbe aiutare i widget che restavano su «caricamento» sui telefoni più lenti.

@@ -1,0 +1,146 @@
+package de.jeanlucmakiola.calendula.ui
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import de.jeanlucmakiola.calendula.data.contacts.SpecialDatesScheduler
+import de.jeanlucmakiola.calendula.data.contacts.hasContactsPermission
+import de.jeanlucmakiola.calendula.ui.common.canReadCalendar
+import de.jeanlucmakiola.calendula.ui.common.rememberCalendarFadeSpec
+import de.jeanlucmakiola.calendula.ui.onboarding.OnboardingStep
+import de.jeanlucmakiola.calendula.ui.onboarding.OnboardingSteps
+import de.jeanlucmakiola.calendula.ui.onboarding.OnboardingViewModel
+import de.jeanlucmakiola.calendula.ui.onboarding.onboardingSlideTransition
+import de.jeanlucmakiola.calendula.ui.onboarding.rememberOnboardingSlideSpec
+import de.jeanlucmakiola.floret.identity.rememberReduceMotion
+
+/** What the root is showing: a wizard step, the app, or neither yet. */
+private sealed interface RootTarget {
+    /** DataStore has not emitted yet — render nothing rather than the wrong screen. */
+    data object Loading : RootTarget
+    data object App : RootTarget
+    data class Step(val step: OnboardingStep) : RootTarget
+}
+
+@Composable
+fun RootScreen(
+    requests: ExternalRequests,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(context.canReadCalendar())
+    }
+
+    // A launch scan already covers the app coming up with the permission, so
+    // only a grant made during this session owes a re-scan.
+    val grantedAtLaunch = remember { hasPermission }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPermission = context.canReadCalendar()
+                // Refresh the contact special-dates mirror on foreground (the
+                // worker is debounced and no-ops when the feature is off). Gated
+                // on the permission so users without the opt-in never enqueue it.
+                if (context.hasContactsPermission()) {
+                    SpecialDatesScheduler.runNow(context, foreground = true)
+                }
+            }
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+
+    val onboarding: OnboardingViewModel = hiltViewModel()
+    val plan by onboarding.plan.collectAsStateWithLifecycle()
+    // The grant is reported however it was taken, including via Android's
+    // app-settings screen (caught by the ON_RESUME above); arming the wizard
+    // hangs off that, not off the in-app callback.
+    LaunchedEffect(hasPermission) {
+        onboarding.setHasPermission(hasPermission)
+        if (hasPermission && !grantedAtLaunch) onboarding.onPermissionGranted()
+    }
+
+    // Arms the one-time explainer for the switch to the device's own calendar
+    // visibility (#75), which the wizard then carries as a step of its own.
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) onboarding.reconcileCalendarVisibility()
+    }
+
+    val current = plan
+    val target: RootTarget = when {
+        current == null -> RootTarget.Loading
+        current.current == null -> RootTarget.App
+        else -> RootTarget.Step(current.current)
+    }
+
+    // Which way the flow is moving, so a step-back slides back. The app sorts
+    // after every step, so finishing the wizard reads as one more move forward.
+    val ordinal = when (target) {
+        RootTarget.Loading -> Int.MIN_VALUE
+        RootTarget.App -> Int.MAX_VALUE
+        is RootTarget.Step -> current?.steps?.indexOf(target.step) ?: 0
+    }
+    var lastOrdinal by remember { mutableIntStateOf(ordinal) }
+    val slideDir = if (ordinal < lastOrdinal) -1 else 1
+    SideEffect { lastOrdinal = ordinal }
+
+    val slideSpec = rememberOnboardingSlideSpec()
+    val fadeSpec = rememberCalendarFadeSpec()
+    val reduceMotion = rememberReduceMotion()
+    AnimatedContent(
+        targetState = target,
+        transitionSpec = {
+            // Coming off the blank first frame is not a step change.
+            if (initialState == RootTarget.Loading) {
+                fadeIn(fadeSpec).togetherWith(fadeOut(fadeSpec))
+            } else {
+                onboardingSlideTransition(
+                    slideDir = slideDir,
+                    spec = slideSpec,
+                    fadeSpec = fadeSpec,
+                    reduceMotion = reduceMotion,
+                )
+            }
+        },
+        label = "onboardingGate",
+    ) { shown ->
+        when (shown) {
+            RootTarget.Loading -> Unit
+            RootTarget.App -> CalendarHost(
+                requests = requests,
+                modifier = modifier,
+            )
+            // Both halves of a transition read their position out of the live
+            // plan; the one the outgoing step was drawn with is already gone.
+            is RootTarget.Step -> current?.let { plan ->
+                OnboardingSteps(
+                    step = shown.step,
+                    plan = plan,
+                    viewModel = onboarding,
+                    onPermissionGranted = { hasPermission = true },
+                    modifier = modifier,
+                )
+            }
+        }
+    }
+}

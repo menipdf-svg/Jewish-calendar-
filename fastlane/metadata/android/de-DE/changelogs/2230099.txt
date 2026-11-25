@@ -1,0 +1,11 @@
+Neu
+• Lange auf einen Termin drücken: auswählen, verschieben, Dauer ändern. Auf freier Stelle: neuen Termin entwerfen.
+• Telefonnummern antippen, um anzurufen.
+• HTML-Beschreibungen erscheinen formatiert.
+• In der Terminliste zu früheren Tagen zurückscrollen.
+• Termine aus geteiltem oder markiertem Text erstellen.
+• Schwarzes Design für AMOLED-Displays.
+
+Behoben
+• Termine am Tag der Zeitumstellung stehen zur richtigen Uhrzeit.
+• Verschobene Serien behalten gelöschte und bearbeitete Termine.

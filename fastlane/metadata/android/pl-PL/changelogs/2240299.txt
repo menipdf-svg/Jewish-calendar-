@@ -1,0 +1,6 @@
+Poprawki
+• Wydarzenia szybko przenoszone jedno po drugim już nie giną: przeniesienia są zapisywane po kolei.
+• Komunikat informuje, gdy przeniesienia nie udało się zapisać.
+
+Zmiany
+• Tytuł widoku dnia pokazuje miesiąc.

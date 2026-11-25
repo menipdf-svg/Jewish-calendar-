@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock shown in the widget picker on Android 14 and below
+     (android:previewLayout); 15+ shows the generated preview instead. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/preview_widget_bg"
+    android:orientation="horizontal"
+    android:padding="6dp"
+    tools:ignore="HardcodedText,NestedWeights,DisableBaselineAlignment,SmallSp,TooManyViews,UselessLeaf,UselessParent">
+
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:background="@drawable/preview_widget_today_bg"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mon"
+            android:textColor="@color/widget_preview_on_primary"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="26"
+            android:textColor="@color/widget_preview_on_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_blue" />
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_green" />
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_purple" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tue"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="27"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_orange" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Wed"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="28"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_red" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Thu"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="29"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp" />
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Fri"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp" />
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sat"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="31"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+        <FrameLayout
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="1dp"
+            android:background="@drawable/preview_today_circle"
+            android:backgroundTint="@color/widget_preview_event_purple" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        style="@style/WidgetPreviewWeekDay"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sun"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="11sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="6dp" />
+    </LinearLayout>
+</LinearLayout>
