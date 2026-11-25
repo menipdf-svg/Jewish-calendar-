@@ -61,7 +61,7 @@ fun EventChip(e: Ev, modifier: Modifier = Modifier, maxLines: Int = 2) {
     val bg = if (filled) e.cat.color else e.cat.color.copy(alpha = if (dark) 0.28f else 0.14f)
     val fg = if (filled) Color.White else tonalText(e.cat, dark)
     Text(
-        text = e.label,
+        text = shortLabel(e.label),
         style = JcText.chip.copy(fontWeight = if (e.chag) FontWeight.Bold else FontWeight.Medium),
         color = fg,
         maxLines = maxLines,
@@ -72,3 +72,11 @@ fun EventChip(e: Ev, modifier: Modifier = Modifier, maxLines: Int = 2) {
             .padding(horizontal = 4.dp, vertical = 2.dp)
     )
 }
+
+
+/** קיצור תצוגה בלבד לתוויות ארוכות בתא צר; הטקסט המלא מוצג בפירוט היום. */
+fun shortLabel(l: String): String = l
+    .replace("חול המועד ", "חוה״מ ")
+    .replace("ערב ראש השנה", "ערב ר״ה")
+    .replace("הושענא רבה", "הושענא רבה")
+    .replace("דף יומי ", "דף ")
