@@ -3,19 +3,20 @@ package com.menipdf.jewishcalendar
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import android.graphics.Canvas
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +33,7 @@ import java.time.LocalDate
 @Config(sdk = [34])
 class CalendarUiTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
 
     private fun newVm(date: LocalDate, view: ViewMode = ViewMode.MONTH, dark: Boolean = false, daf: Boolean = false): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
@@ -55,7 +56,10 @@ class CalendarUiTest {
     }
 
     private fun shot(name: String) {
-        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+        rule.waitForIdle()
+        val v = rule.activity.window.decorView
+        val bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888)
+        v.draw(Canvas(bmp))
         val dir = File("build/screenshots").also { it.mkdirs() }
         FileOutputStream(File(dir, "$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
@@ -133,7 +137,7 @@ class CalendarUiTest {
         rule.onNode(hasContentDescription("27 בנובמבר", substring = true) and hasClickAction()).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("פתח תצוגת יום").assertExists()
-        rule.onNodeWithText("כניסת שבת").assertExists()
+        assertTrue(rule.onAllNodesWithText("כניסת שבת").fetchSemanticsNodes().size >= 2)
     }
 
     @Test @Config(qualifiers = "w360dp-h740dp-xxhdpi")
@@ -147,6 +151,6 @@ class CalendarUiTest {
     @Test @Config(qualifiers = "w360dp-h740dp-xxhdpi")
     fun weekdaysAllVisible_360() {
         show(newVm(LocalDate.of(2026, 11, 15)))
-        listOf("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳").forEach { rule.onNodeWithText(it).assertExists() }
+        listOf("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳").forEach { assertTrue(it, rule.onAllNodesWithText(it).fetchSemanticsNodes().isNotEmpty()) }
     }
 }

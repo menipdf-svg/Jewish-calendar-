@@ -38,7 +38,8 @@ class EngineTest {
         assertTrue(labels(dia, 2026, 9, 13).any { it.contains("ראש השנה") })
         val il = eng()
         assertTrue(labels(il, 2026, 9, 12).any { it.contains("ראש השנה") })
-        assertFalse(labels(il, 2026, 9, 13).any { it.contains("ראש השנה") })
+        assertTrue(labels(il, 2026, 9, 13).any { it.contains("ראש השנה") })
+        assertFalse(labels(il, 2026, 9, 14).any { it.contains("ראש השנה") })
     }
 
     @Test
@@ -96,7 +97,7 @@ class EngineTest {
     fun roshChodesh_and_chanukah() {
         val e = eng()
         assertTrue("${labels(e, 2026, 12, 11)}", labels(e, 2026, 12, 11).any { it.startsWith("ראש חודש") })
-        assertTrue(labels(e, 2026, 12, 4).any { it.contains("חנוכה") })
+        assertTrue("${labels(e, 2026, 12, 5)}", labels(e, 2026, 12, 5).any { it.contains("חנוכה") })
     }
 
     @Test
