@@ -1,0 +1,17 @@
+{
+  "name": "jewish-calendar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "לוח שנה עברי בעיצוב יומן גוגל – זמני הלכה, כניסת שבת, חגים ופרשת שבוע",
+  "scripts": {
+    "build": "esbuild src/app.js --bundle --minify --format=iife --target=es2020 --outfile=dist/app.js",
+    "dev": "esbuild src/app.js --bundle --format=iife --target=es2020 --outfile=dist/app.js --watch"
+  },
+  "dependencies": {
+    "@hebcal/core": "^6.16.1",
+    "@hebcal/learning": "latest"
+  },
+  "devDependencies": {
+    "esbuild": "latest"
+  }
+}
