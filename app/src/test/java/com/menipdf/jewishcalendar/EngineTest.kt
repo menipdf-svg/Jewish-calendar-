@@ -34,7 +34,7 @@ class EngineTest {
     @Test
     fun roshHashana_diaspora_twoDays_israel_oneDay() {
         val dia = eng("newyork", 18)
-        assertTrue(labels(dia, 2026, 9, 12).any { it.contains("ראש השנה") })
+        assertTrue("${labels(dia, 2026, 9, 12)}", labels(dia, 2026, 9, 12).any { it.contains("ראש השנה") })
         assertTrue(labels(dia, 2026, 9, 13).any { it.contains("ראש השנה") })
         val il = eng()
         assertTrue(labels(il, 2026, 9, 12).any { it.contains("ראש השנה") })
@@ -95,7 +95,7 @@ class EngineTest {
     @Test
     fun roshChodesh_and_chanukah() {
         val e = eng()
-        assertTrue(labels(e, 2026, 12, 11).any { it.startsWith("ראש חודש") })
+        assertTrue("${labels(e, 2026, 12, 11)}", labels(e, 2026, 12, 11).any { it.startsWith("ראש חודש") })
         assertTrue(labels(e, 2026, 12, 4).any { it.contains("חנוכה") })
     }
 

@@ -33,6 +33,7 @@ android {
     }
     testOptions {
         unitTests {
+            all { it.testLogging { exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL; showStandardStreams = true } }
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
