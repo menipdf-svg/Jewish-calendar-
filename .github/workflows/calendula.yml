@@ -42,19 +42,24 @@ jobs:
           "$BT/zipalign" -c -P 16 -v 4 "$APK" | grep -E "lib/arm64|Verification" | head -10 || true
           "$BT/aapt2" dump badging "$APK" | grep -iE "minSdk|sdkVersion:|application-debuggable|extractNative|launchable" | head
           unzip -l "$APK" | grep -E "lib/arm64" | head
+      - name: Build non-debuggable test APK (R8)
+        run: ./gradlew assembleReleaseTest --no-daemon --stacktrace
       - name: Collect APK
         run: |
           mkdir -p out
           cp app/build/outputs/apk/debug/*.apk out/calendula-hebrew.apk
+          cp app/build/outputs/apk/releaseTest/*.apk out/calendula-hebrew-release.apk
       - uses: actions/upload-artifact@v4
         with:
           name: calendula-hebrew-apk
-          path: out/calendula-hebrew.apk
+          path: out/*.apk
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: calendula-hebrew-latest
           name: Calendula עברי - גרסה אחרונה
           body: "APK debug של Calendula (MIT) עם תאריך עברי וזמני הלכה. נבנה אוטומטית מהענף calendula."
-          files: out/calendula-hebrew.apk
+          files: |
+            out/calendula-hebrew.apk
+            out/calendula-hebrew-release.apk
           make_latest: false
