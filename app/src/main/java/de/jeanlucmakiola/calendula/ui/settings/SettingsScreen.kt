@@ -36,6 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -223,6 +225,9 @@ private fun SettingsHub(
             leading = { CategoryIcon(Icons.Default.Notifications, ChipAccent.Primary) },
             onClick = { onOpenSection(SettingsSection.Notifications) },
         )
+
+        Spacer(Modifier.height(8.dp))
+        HebrewCalendarSettingsGroup()
 
         Spacer(Modifier.height(8.dp))
         GroupedSectionHeader(stringResource(R.string.settings_group_data))
@@ -473,3 +478,51 @@ private val LOGO_SIZE = 56.dp
  * wide safe margin, so at 1:1 it would sit small and lost; launchers crop it too.
  */
 private const val MARK_OVERSCAN = 1.5f
+
+
+@Composable
+private fun HebrewCalendarSettingsGroup() {
+    val hebVersion by de.jeanlucmakiola.calendula.hebrew.HebrewCal.version.collectAsState()
+    var pickCity by remember { mutableStateOf(false) }
+    val cal = de.jeanlucmakiola.calendula.hebrew.HebrewCal
+    GroupedSectionHeader("לוח עברי")
+    GroupedRow(
+        title = "עיר וזמני הלכה",
+        summary = hebVersion.let { cal.engine.city.name },
+        position = Position.Top,
+        leading = { CategoryIcon(Icons.Default.CalendarMonth, ChipAccent.Primary) },
+        onClick = { pickCity = true },
+    )
+    GroupedRow(
+        title = "הצגת חגים, פרשה וזמני שבת",
+        summary = hebVersion.let { if (cal.enabled) "פעיל – לחיצה לכיבוי" else "כבוי – לחיצה להפעלה" },
+        position = Position.Bottom,
+        leading = { CategoryIcon(Icons.Default.CalendarMonth, ChipAccent.Secondary) },
+        onClick = { cal.setEnabled(!cal.enabled) },
+    )
+    if (pickCity) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pickCity = false },
+            title = { Text("בחירת עיר") },
+            text = {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                ) {
+                    de.jeanlucmakiola.calendula.hebrew.HEB_CITIES.forEach { c ->
+                        androidx.compose.material3.TextButton(
+                            onClick = { cal.setCity(c.id); pickCity = false },
+                        ) {
+                            Text(
+                                (if (c.id == cal.cityId) "✓ " else "") + c.name + " · " + c.group,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { pickCity = false }) { Text("סגירה") }
+            },
+        )
+    }
+}
