@@ -1,0 +1,323 @@
+package com.menipdf.jewishcalendar
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalendarApp(vm: AppViewModel = viewModel()) {
+    JcTheme(isDarkTheme(vm.theme)) {
+        val engine = remember(vm.city, vm.candleMinutes, vm.havdalah) {
+            Engine(vm.city, vm.candleMinutes, vm.havdalah)
+        }
+        val drawer = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
+        var showSettings by remember { mutableStateOf(false) }
+        var selected by remember { mutableStateOf<Ev?>(null) }
+        var viewMenu by remember { mutableStateOf(false) }
+
+        ModalNavigationDrawer(
+            drawerState = drawer,
+            drawerContent = {
+                ModalDrawerSheet {
+                    DrawerContent(vm, engine) {
+                        scope.launch { drawer.close() }
+                        showSettings = true
+                    }
+                }
+            }
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("יומן עברי", fontSize = 20.sp) },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawer.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "תפריט")
+                            }
+                        },
+                        actions = {
+                            TextButton(onClick = { vm.today() }) { Text("היום") }
+                            Box {
+                                TextButton(onClick = { viewMenu = true }) {
+                                    Text(vm.view.label)
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                                DropdownMenu(expanded = viewMenu, onDismissRequest = { viewMenu = false }) {
+                                    ViewMode.values().forEach { m ->
+                                        DropdownMenuItem(
+                                            text = { Text(m.label) },
+                                            onClick = {
+                                                vm.view = m
+                                                vm.save()
+                                                viewMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            IconButton(onClick = { showSettings = true }) {
+                                Icon(Icons.Default.Settings, contentDescription = "הגדרות")
+                            }
+                        }
+                    )
+                }
+            ) { pad ->
+                Column(Modifier.padding(pad).fillMaxSize()) {
+                    RangeHeader(vm, engine)
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .swipeNav(vm)
+                    ) {
+                        when (vm.view) {
+                            ViewMode.MONTH -> MonthView(vm, engine) { selected = it }
+                            ViewMode.WEEK -> WeekView(vm, engine) { selected = it }
+                            ViewMode.DAY -> DayView(vm, engine) { selected = it }
+                            ViewMode.AGENDA -> AgendaView(vm, engine) { selected = it }
+                        }
+                    }
+                }
+            }
+        }
+
+        selected?.let { EventDialog(it, engine) { selected = null } }
+        if (showSettings) SettingsDialog(vm) { showSettings = false }
+    }
+}
+
+/** החלקה בין חודשים/ימים (RTL: החלקה ימינה = הבא) */
+private fun Modifier.swipeNav(vm: AppViewModel): Modifier = pointerInput(vm.view) {
+    if (vm.view == ViewMode.WEEK) return@pointerInput // בשבוע יש גלילה אופקית
+    var total = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { total = 0f },
+        onDragEnd = {
+            if (total > 140f) vm.shift(1) else if (total < -140f) vm.shift(-1)
+        },
+        onHorizontalDrag = { _, dx -> total += dx }
+    )
+}
+
+@Composable
+private fun RangeHeader(vm: AppViewModel, engine: Engine) {
+    val c = vm.cursor
+    val (title, sub) = when (vm.view) {
+        ViewMode.MONTH -> {
+            val first = c.withDayOfMonth(1)
+            val last = c.withDayOfMonth(c.lengthOfMonth())
+            first.monthYear() to engine.hebRange(first, last)
+        }
+        ViewMode.WEEK -> {
+            val a = c.startOfWeek()
+            val b = a.plusDays(6)
+            val t = if (a.month == b.month) "${a.dayOfMonth}–${b.dayOfMonth} ${a.monthYear()}"
+            else "${a.dayOfMonth} ${GREG_MONTHS[a.monthValue - 1]} – ${b.dayOfMonth} ${GREG_MONTHS[b.monthValue - 1]} ${b.year}"
+            t to engine.hebRange(a, b)
+        }
+        ViewMode.DAY -> c.longDate() to "${c.weekdayName()} · ${engine.hebFull(c)}"
+        ViewMode.AGENDA -> {
+            val b = c.plusDays(29)
+            "${c.dayOfMonth} ${GREG_MONTHS[c.monthValue - 1]} – ${b.dayOfMonth} ${GREG_MONTHS[b.monthValue - 1]} ${b.year}" to
+                engine.hebRange(c, b)
+        }
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = { vm.shift(-1) }) {
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "הקודם")
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick = { vm.shift(1) }) {
+            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "הבא")
+        }
+    }
+}
+
+/* ---------- תפריט צד ---------- */
+@Composable
+private fun DrawerContent(vm: AppViewModel, engine: Engine, onSettings: () -> Unit) {
+    val today = LocalDate.now()
+    val next = remember(engine, today) { engine.nextShabbat(today, System.currentTimeMillis()) }
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            Text(
+                engine.hebFull(today),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                "${today.weekdayName()}, ${today.longDate()}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            next.parsha?.let {
+                Spacer(Modifier.height(10.dp))
+                Text(it.label, fontWeight = FontWeight.Medium)
+            }
+            next.candle?.let { ShabbatRow(it, engine) }
+            next.havdalah?.let { ShabbatRow(it, engine) }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "${engine.city.name} · ${vm.candleMinutes} דק׳ לפני השקיעה",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("יומנים", fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 4.dp))
+        Cat.values().forEach { cat ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        vm.filters[cat] = !(vm.filters[cat] ?: true)
+                        vm.save()
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = vm.filters[cat] ?: true,
+                    onCheckedChange = {
+                        vm.filters[cat] = it
+                        vm.save()
+                    },
+                    colors = CheckboxDefaults.colors(checkedColor = cat.color, uncheckedColor = cat.color)
+                )
+                Text(cat.label, fontSize = 14.sp)
+            }
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        TextButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
+            Text("הגדרות ומיקום", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+        }
+    }
+}
+
+@Composable
+private fun ShabbatRow(e: Ev, engine: Engine) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(e.label, fontWeight = FontWeight.Medium)
+            Text(
+                "${e.date.weekdayName()}, ${e.date.longDate()}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(engine.hm(e.timeMillis ?: 0L), fontSize = 22.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/* ---------- פרטי אירוע ---------- */
+@Composable
+private fun EventDialog(e: Ev, engine: Engine, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("סגור") } },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(14.dp).background(e.cat.color, RoundedCornerShape(4.dp)))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    if (e.cat == Cat.SHABBAT || e.cat == Cat.ZMANIM) e.label else e.full,
+                    fontSize = 20.sp
+                )
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    "${e.date.weekdayName()}, ${e.date.longDate()} · ${engine.hebFull(e.date)}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+                e.timeMillis?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(engine.hm(it), fontSize = 28.sp, fontWeight = FontWeight.Medium)
+                }
+                if (e.memo.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(e.memo)
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "${e.cat.label} · ${engine.city.name}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    )
+}
